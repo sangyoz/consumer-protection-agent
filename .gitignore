@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.env
+*.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+.qa/
+
+# 本机保留的原始需求与视觉参考，不包含在代码框架中。
+/84157ffee198c24b9825adceb042a01d.jpg
+/9b5aadc842bd02e0ec6357428f59e4bf.png
+/d59a56982315f6f92a5a47832ce14d04.png
+/基本要求和流程(1).docx
+/技术栈.txt
+/youli_consumer_rights_demo.html

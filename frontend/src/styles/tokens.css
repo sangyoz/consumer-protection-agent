@@ -1,0 +1,23 @@
+:root {
+  --brand: #315efb;
+  --brand-hover: #254cda;
+  --brand-soft: #edf2ff;
+  --ink: #17243b;
+  --muted: #758197;
+  --line: #e7ebf1;
+  --background: #f5f7fb;
+  --surface: #fff;
+  --green: #16845b;
+  --amber: #a66a12;
+  --danger: #b53939;
+  --radius: 14px;
+  --sidebar-width: 224px;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-title: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--background);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}

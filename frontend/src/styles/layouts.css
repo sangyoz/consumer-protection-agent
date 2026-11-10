@@ -1,0 +1,159 @@
+/* 与设想图对应的页面骨架：案件列表 → 历史案件与输入 → 三栏工作台。 */
+.focused-shell .app-main { margin-left: 0; }
+.focused-shell .topbar { height: 64px; padding: 0 28px; }
+.focus-brand { display: flex; align-items: center; gap: 10px; }
+.focus-brand .brand-mark { height: 30px; width: 30px; border-radius: 9px; font-size: 17px; }
+.focus-brand strong { font-size: 18px; letter-spacing: 1px; color: var(--ink); font-weight: 650; }
+.focus-home { margin-right: 7px; color: #8090a9; }
+.case-list-layout { display: grid; gap: 16px; }
+.case-list-layout .case-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) 190px; gap: 20px; min-height: 0; padding: 23px; align-items: start; }
+.case-row-content { min-width: 0; }
+.case-list-layout .case-excerpt { -webkit-line-clamp: 1; margin-bottom: 13px; }
+.case-list-layout .case-card h2 { margin-bottom: 7px; }
+.case-row-meta { display: flex; flex-wrap: wrap; gap: 18px; color: #98a2b3; font-size: 11px; }
+.case-row-meta strong { color: #6b7b94; font-weight: 500; }
+.case-row-progress { display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
+.case-stage-track { display: flex; width: 160px; gap: 5px; }
+.case-stage-track i { flex: 1; height: 4px; border-radius: 2px; background: #edf0f6; }
+.case-stage-track i.reached { background: #7995ef; }
+.case-row-progress .text-link { font-size: 11px; }
+.new-case-row { display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px dashed #d9e1ef; border-radius: 12px; color: #8a9ab5; padding: 20px; font-size: 12px; }
+.new-case-row:hover { color: var(--brand); background: var(--brand-soft); }
+
+/* 新建：左侧历史案件，中央留给对话，输入框落在底部。 */
+.intake-layout { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: calc(100dvh - 64px); }
+.history-sidebar { display: flex; flex-direction: column; gap: 8px; background: #fff; border-right: 1px solid var(--line); padding: 24px 17px; }
+.history-sidebar > .btn { margin-bottom: 23px; }
+.history-heading { color: #96a1b3; font-size: 11px; display: flex; justify-content: space-between; padding: 0 10px; margin-bottom: 8px; }
+.history-item { display: flex; align-items: flex-start; gap: 9px; padding: 13px 10px; color: #8896ae; border-radius: 9px; }
+.history-item:hover { background: var(--brand-soft); }
+.history-item > svg { margin-top: 2px; }
+.history-item div { min-width: 0; }
+.history-item strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; font-weight: 500; color: #697990; line-height: 1.8; margin-bottom: 7px; }
+.history-item .badge { padding: 3px 6px; font-size: 9px; }
+.history-home { margin-top: auto; padding: 24px 10px 0; }
+.intake-main { min-width: 0; display: flex; flex-direction: column; min-height: calc(100dvh - 64px); padding: 36px clamp(22px, 6vw, 104px) 22px; }
+.intake-welcome { margin: auto 0; padding: 50px 0 70px; text-align: center; }
+.intake-emblem { display: grid; place-items: center; width: 55px; height: 55px; background: #eaf0ff; color: #476cda; border-radius: 17px; margin: 0 auto 23px; font-size: 28px; font-weight: 600; }
+.intake-welcome .eyebrow { margin-bottom: 10px; }
+.intake-welcome h1 { font-size: 30px; }
+.intake-welcome > p { font-size: 13px; color: #8c99ae; margin-top: 13px; line-height: 1.9; }
+.intake-welcome .example-list { justify-content: center; margin-top: 27px; }
+.intake-composer-area { width: 100%; max-width: 880px; margin: 0 auto; }
+.intake-composer { padding: 18px 22px 15px; border-color: #dce4f2; box-shadow: 0 6px 28px #2b447307; }
+.intake-composer > textarea { border: 0; box-shadow: none; padding: 0; resize: vertical; min-height: 90px; font-size: 14px; }
+.intake-composer > textarea:focus { box-shadow: none; }
+.intake-composer > .field-caption { margin-bottom: 10px; color: #8291a9; }
+.intake-details { margin: 12px 0; }
+.intake-details > summary { color: #8c9ab0; font-size: 11px; cursor: pointer; }
+.intake-details > summary span { color: #aab3c1; margin-left: 8px; }
+.intake-compose-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid #f0f3f8; padding-top: 13px; }
+.intake-compose-footer > span { display: flex; align-items: center; gap: 6px; color: #a1acbd; font-size: 10px; }
+.intake-caption { text-align: center; color: #a4adbb; margin-top: 13px; font-size: 10px; line-height: 1.8; }
+
+/* 案件内部只保留三栏：事实证据、对话操作、进度与建议。 */
+.case-workspace { max-width: 1840px; margin: auto; padding: 23px 27px 28px; }
+.workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 17px; }
+.workspace-heading .eyebrow { font-size: 10px; margin-bottom: 4px; display: block; }
+.workspace-heading h1 { font-size: 20px; line-height: 1.6; }
+.case-workspace .workbench-toolbar { margin-bottom: 18px; }
+.workspace-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.workspace-layout.hide-left { grid-template-columns: minmax(0, 1fr) 340px; }
+.workspace-layout.hide-right { grid-template-columns: 240px minmax(0, 1fr); }
+.workspace-layout.hide-left.hide-right { grid-template-columns: minmax(0, 1fr); }
+.workspace-layout .case-context { display: block; grid-column: auto; padding: 21px 19px; }
+.workspace-layout .case-context .divider { display: block; }
+.workspace-layout .case-context .case-facts dt:first-child { margin-top: 18px; }
+.workspace-layout .case-facts dd { font-size: 12px; }
+.workspace-layout .case-facts dd.amount-text { font-size: 21px; }
+.workspace-layout .evidence-file { margin: 15px 0; }
+.workspace-center { min-width: 0; }
+.workspace-center > .panel { min-height: calc(100dvh - 224px); }
+.workspace-layout .negotiation-chat { display: flex; flex-direction: column; height: calc(100dvh - 224px); min-height: 560px; padding: 23px; }
+.negotiation-chat .chat-history { flex: 1; max-height: none; min-height: 150px; padding: 4px 3px 24px; }
+.negotiation-chat .chat-compose { margin-top: auto; }
+.negotiation-chat .message { max-width: 96%; }
+.negotiation-chat .message p { font-size: 13px; }
+.negotiation-chat .message-label { font-size: 10px; }
+.negotiation-chat .chat-compose textarea { font-size: 13px; }
+.workspace-right { display: flex; flex-direction: column; padding: 21px; min-height: calc(100dvh - 224px); }
+.workspace-right > .panel-title { margin-bottom: 16px; }
+.compact-progress { list-style: none; padding: 0 0 21px; margin: 0 0 22px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.compact-progress li { display: flex; align-items: center; flex-direction: column; gap: 9px; position: relative; font-size: 9px; color: #a0aabe; }
+.compact-progress li:not(:last-child)::after { content: ''; position: absolute; height: 1px; background: #e7ecf5; top: 11px; left: calc(50% + 16px); right: calc(-50% + 15px); }
+.compact-step { display: grid; place-items: center; height: 23px; width: 23px; border-radius: 50%; background: #f0f3f8; font-size: 10px; }
+.compact-progress .done { color: #759184; }
+.compact-progress .done .compact-step { background: #edf7f2; color: #469476; }
+.compact-progress .current { color: var(--brand); }
+.compact-progress .current .compact-step { color: #fff; background: var(--brand); box-shadow: 0 0 0 4px #edf2ff; }
+.workspace-right-body { flex: 1; }
+.right-advice .panel-title h2 { font-size: 14px; }
+.right-advice .strategy-card h3 { font-size: 12px; }
+.right-advice .strategy-card p, .right-advice .law-card p, .right-advice .script-box { font-size: 12px; }
+.right-advice .advice-section { margin-top: 23px; }
+.right-advice .advice-section .panel-title { align-items: center; }
+.right-advice .advice-section select { font-size: 11px; }
+.right-advice .fine-print { margin-top: 13px; }
+.stage-guide h2 { font-size: 14px; }
+.stage-guide > p { font-size: 12px; line-height: 2; color: #8795aa; margin-top: 13px; }
+.workspace-right-footer { padding-top: 21px; margin-top: 23px; border-top: 1px solid var(--line); }
+.workspace-right-footer .step-actions { margin-top: 0; }
+.workspace-right-footer .step-actions .btn { font-size: 12px; min-height: 37px; }
+.workspace-right-footer .progress-link { display: flex; justify-content: center; font-size: 11px; margin-top: 14px; }
+
+@media (max-width: 1120px) {
+  .workspace-layout { grid-template-columns: 205px minmax(0, 1fr) 290px; gap: 13px; }
+  .workspace-layout.hide-left { grid-template-columns: minmax(0, 1fr) 290px; }
+  .workspace-layout.hide-right { grid-template-columns: 205px minmax(0, 1fr); }
+  .workspace-right { padding: 17px; }
+  .case-workspace { padding: 22px 20px; }
+  .workspace-layout .negotiation-chat { padding: 18px; }
+}
+@media (max-width: 900px) {
+  .intake-layout { grid-template-columns: 205px minmax(0, 1fr); }
+  .history-sidebar { padding: 22px 12px; }
+  .intake-main { padding: 25px 24px 20px; }
+  .intake-welcome h1 { font-size: 25px; }
+  .workspace-layout { grid-template-columns: 175px minmax(0, 1fr) 260px; gap: 10px; }
+  .workspace-layout.hide-left { grid-template-columns: minmax(0, 1fr) 260px; }
+  .workspace-layout.hide-right { grid-template-columns: 175px minmax(0, 1fr); }
+  .workspace-layout .case-context { padding: 17px 13px; }
+  .workspace-right { padding: 16px 13px; }
+}
+@media (max-width: 760px) {
+  .case-list-layout .case-card { grid-template-columns: 35px minmax(0, 1fr); gap: 12px; padding: 18px; }
+  .case-list-layout .case-symbol { width: 34px; height: 34px; }
+  .case-list-layout .case-excerpt { -webkit-line-clamp: 2; }
+  .case-row-progress { grid-column: 2; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+  .case-stage-track { display: none; }
+  .case-row-meta { gap: 8px 15px; font-size: 10px; }
+  .focused-shell .topbar { padding: 0 16px; height: 60px; }
+  .focus-home { display: none; }
+  .intake-layout { grid-template-columns: 1fr; min-height: calc(100dvh - 60px); }
+  .history-sidebar { display: none; }
+  .intake-main { padding: 20px 16px 18px; min-height: calc(100dvh - 60px); }
+  .intake-welcome { padding: 32px 0; }
+  .intake-welcome h1 { font-size: 24px; }
+  .intake-welcome > p { font-size: 12px; }
+  .intake-emblem { width: 46px; height: 46px; font-size: 24px; margin-bottom: 20px; }
+  .intake-welcome .example-list { gap: 7px; }
+  .example-chip { font-size: 10px; }
+  .intake-composer { padding: 16px; }
+  .intake-compose-footer { flex-wrap: wrap; }
+  .intake-compose-footer > span { font-size: 9px; }
+  .intake-compose-footer > .btn { margin-left: auto; font-size: 11px; }
+  .case-workspace { padding: 20px 16px; }
+  .workspace-heading { gap: 12px; align-items: flex-start; }
+  .workspace-heading h1 { font-size: 18px; }
+  .workspace-layout, .workspace-layout.hide-left, .workspace-layout.hide-right, .workspace-layout.hide-left.hide-right { grid-template-columns: minmax(0, 1fr); }
+  .workspace-layout .case-context { display: block; }
+  .workspace-layout .case-facts { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: baseline; gap: 9px; }
+  .workspace-layout .case-facts dt, .workspace-layout .case-facts dt:first-child, .workspace-layout .case-facts dd { margin: 0; }
+  .workspace-layout .case-context .divider { margin: 16px 0; }
+  .workspace-center > .panel, .workspace-right { min-height: auto; }
+  .workspace-layout .negotiation-chat { height: auto; min-height: 500px; }
+  .negotiation-chat .chat-history { max-height: 440px; }
+  .workspace-right { padding: 20px; }
+  .compact-progress { margin-bottom: 20px; }
+  .intake-details .form-grid { grid-template-columns: 1fr; }
+}
