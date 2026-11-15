@@ -2,6 +2,9 @@
   "name": "youli-workspace",
   "private": true,
   "scripts": {
+    "start": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ./start.ps1 -Action start -OpenBrowser",
+    "stop": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ./start.ps1 -Action stop",
+    "status": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ./start.ps1 -Action status",
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build"
   }

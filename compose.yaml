@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: youli
+      MYSQL_USER: youli
+      MYSQL_PASSWORD: youli_dev_password
+      MYSQL_ROOT_PASSWORD: youli_root_dev_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - youli_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-pyouli_root_dev_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  youli_mysql_data:

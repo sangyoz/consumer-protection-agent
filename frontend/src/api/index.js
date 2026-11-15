@@ -4,7 +4,7 @@ import { seedCases } from './seed'
 import { analyzeDemo, replyDemo, complaintDemo } from './demo-engine'
 
 export const dataMode = import.meta.env.VITE_DATA_MODE === 'api' ? 'api' : 'mock'
-const http = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || '/api', timeout: 30000 })
+const http = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || '/api', timeout: 180000 })
 const storageKey = 'youli.cases.v1'
 let memory = null
 function read() {
@@ -37,6 +37,7 @@ const mock = {
   async generateComplaint(id) { return mutate(id, item => { ensureOpen(item); item.complaint = complaintDemo(item); item.stage = 'complaining'; event(item, '生成投诉草稿，尚未向任何平台提交') }) },
   async addMaterials(id, files) { return mutate(id, item => { ensureOpen(item); item.materials.push(...files.map(file => ({ id: crypto.randomUUID(), name: file.name, size: file.size, status: 'metadata' }))); event(item, '记录附件名称；本地演示不保存文件内容') }) },
   async updateProgress(id, payload) { return mutate(id, item => { if (payload.stage === 'resolved' && !payload.confirmed) throw new Error('请先确认诉求已实际履行。'); if (payload.stage) item.stage = payload.stage; event(item, payload.note) }) },
+  async updateEvidence(id, payload) { return mutate(id, item => { item.evidence_checklist ||= []; const index = item.evidence_checklist.findIndex(row => row.key === payload.key); const row = { key: payload.key, status: payload.status, note: payload.note || '', content_verified: false }; if (index < 0) item.evidence_checklist.push(row); else item.evidence_checklist[index] = row; event(item, '更新用户自述证据状态；附件内容尚未核验') }) },
 }
 const real = {
   async listCases() { return (await http.get('/cases')).data },
@@ -47,5 +48,6 @@ const real = {
   async generateComplaint(id) { return (await http.post(`/cases/${id}/complaint`)).data },
   async addMaterials(id, files) { const data = new FormData(); files.forEach(file => data.append('files', file)); return (await http.post(`/cases/${id}/materials`, data)).data },
   async updateProgress(id, payload) { return (await http.post(`/cases/${id}/progress`, payload)).data },
+  async updateEvidence(id, payload) { return (await http.post(`/cases/${id}/evidence`, payload)).data },
 }
 export const api = dataMode === 'mock' ? mock : real

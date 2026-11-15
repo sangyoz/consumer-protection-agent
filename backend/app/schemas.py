@@ -4,6 +4,12 @@ from pydantic import BaseModel, Field, field_validator
 Stage = Literal['collecting', 'analyzing', 'negotiating', 'complaining', 'following', 'resolved']
 
 
+class EvidenceInput(BaseModel):
+    key: Literal['transaction', 'payment', 'issue', 'communication']
+    status: Literal['missing', 'user_confirmed', 'not_applicable']
+    note: str = Field(default='', max_length=1000)
+
+
 class CaseInput(BaseModel):
     title: str = Field(default='', max_length=100)
     summary: str = Field(min_length=1, max_length=10000)
