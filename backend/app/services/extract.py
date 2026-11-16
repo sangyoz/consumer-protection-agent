@@ -93,7 +93,7 @@ def extract_product(text):
         if index < 0:
             continue
         start = index + len(verb)
-        head = re.split(r'[，,。；;！!？?\n]', text[start:start + 40])[0]
+        head = re.split(r'[，,。；;！!？?\n]', text[start:start + 40].lstrip('，,。；、 了的'))[0]
         head = re.sub(r'^[了]?(?:一|两|三|几|半)?[个台部双件张只瓶盒套份]?', '', head)
         # 商品名后面常跟金额（「无线耳机399元」），先截掉，避免金额混进商品名。
         amount_hit = PRODUCT_AMOUNT.search(head)

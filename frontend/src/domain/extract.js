@@ -86,7 +86,7 @@ function findProduct(text) {
     const index = text.indexOf(verb)
     if (index < 0) continue
     const start = index + verb.length
-    let head = text.slice(start, start + 40).split(/[，,。；;！!？?\n]/)[0]
+    let head = text.slice(start, start + 40).replace(/^[，,。；、 了的]+/, '').split(/[，,。；;！!？?\n]/)[0]
     head = head.replace(/^[了]?(?:一|两|三|几|半)?[个台部双件张只瓶盒套份]?/, '')
     // 商品名后面常跟金额（「无线耳机399元」），先截掉，避免金额混进商品名。
     const amountHit = head.match(PRODUCT_AMOUNT_RE)
