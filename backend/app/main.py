@@ -155,9 +155,8 @@ def send_message(case_id: str, input: MessageInput, session: Session = Depends(g
     response_text = result['reply']
     case['messages'].append({'id': str(uuid4()), 'role': 'merchant', 'content': input.content, 'createdAt': created_at})
     case['messages'].append({'id': str(uuid4()), 'role': 'assistant', 'content': response_text, 'createdAt': created_at})
-    case['stage'] = 'negotiating'
-    mode_label = 'DeepSeek' if result['engine'] == 'deepseek' else '演示'
-    record_event(case, f'记录商家回复并生成{mode_label}沟通建议')
+    case['stage'] = 'negotiating'
+    record_event(case, '已记录商家回复并生成沟通建议')
     return save(record, case, session)
 
 
@@ -169,7 +168,7 @@ def generate_complaint(case_id: str, session: Session = Depends(get_session)):
     save_agent_state(case, result)
     case['complaint'] = result['complaint']
     case['stage'] = 'complaining'
-    record_event(case, '生成投诉草稿，尚未向任何平台提交')
+    record_event(case, '已生成投诉草稿')
     return save(record, case, session)
 
 
@@ -183,7 +182,7 @@ def update_evidence(case_id: str, input: EvidenceInput, session: Session = Depen
     entries = {row['key']: row for row in evidence.assess(case)}
     entries[input.key].update(status=input.status, note=input.note, content_verified=False)
     case['evidence_checklist'] = list(entries.values())
-    record_event(case, '更新用户自述证据状态，系统尚未核验附件内容')
+    record_event(case, '已更新证据状态')
     return save(record, case, session)
 
 
@@ -216,7 +215,7 @@ async def upload_materials(case_id: str, files: list[UploadFile] = File(...), se
             target.write_bytes(content)
             written.append(target)
             case['materials'].append(material)
-        record_event(case, '附件已保存，内容解析待接入')
+        record_event(case, '附件已保存')
         return save(record, case, session)
     except Exception:
         session.rollback()
@@ -241,7 +240,7 @@ def download_material(case_id: str, material_id: str, session: Session = Depends
     material = find_material(case, material_id)
     storage_name = material.get('storageName')
     if not storage_name:
-        raise HTTPException(400, '演示材料没有可下载的文件')
+        raise HTTPException(400, '该材料没有可下载的文件')
     path = UPLOAD_DIR / Path(storage_name).name
     if not path.exists():
         raise HTTPException(404, '文件已丢失，请重新上传')

@@ -111,7 +111,7 @@ def finish(state: AgentState) -> dict:
     sources = [{'law_id': row['id'], 'citation': f"《{row['law_name']}》第{row['article']}条",
                 'quote': quotes.get(row['id'], row['content']), 'source': row['source'],
                 'effective_from': row['effective_from'], 'reviewed_at': row['reviewed_at']} for row in laws]
-    explanation = '引用身份与原文已匹配本地维护的法律库；是否适用于本案仍需核对。' if sources else '本轮没有已核验的法条引用，请先补充事实或维护官方法律库。'
+    explanation = '引用身份与原文已匹配本地维护的法律库；是否适用于本案仍需核对。' if sources else '本轮没有可引用的法律条文，请先补充交易事实和证据。'
     if sources:
         explanation += '\n\n' + '\n\n'.join(f"{row['citation']}\n原文：{row['quote']}\n来源：{row['source']}" for row in sources)
     if sources:
@@ -126,7 +126,7 @@ def finish(state: AgentState) -> dict:
                   audit={**state['audit'], 'correction_attempts': state['correction_count'],
                          'correction_history': state['correction_history']},
                   trace=state['trace'] + ['finish'],
-                  legal={'name': '法条引用来源核验' if sources else '暂无已核验法条引用',
+                  legal={'name': '法条引用来源核验' if sources else '暂无法条引用',
                          'explanation': explanation, 'source': sources[0]['source'] if sources else '',
                          'citations': sources, 'verified': bool(sources), 'applicability_verified': False})
     return {'result': result}

@@ -57,7 +57,7 @@ async function generate() {
     complaintAttachments: selectedIds.value,
   }
   await store.act('updateCase', props.item.id, payload)
-  if (await store.act('generateComplaint', props.item.id)) store.notify('投诉草稿已生成，尚未对外提交')
+  if (await store.act('generateComplaint', props.item.id)) store.notify('投诉草稿已生成，请核对后自行提交')
 }
 
 async function copy() {
@@ -133,6 +133,6 @@ async function copy() {
       <button class="btn btn-primary" :disabled="store.busy || item.stage === 'resolved' || !stepValid" @click="generate">{{ store.busy ? '正在整理…' : item.complaint ? '重新生成草稿' : '生成投诉材料' }}</button>
       <RouterLink :to="{ path: '/follow-up', query: { case: item.id } }" class="btn btn-secondary">记录处理进度<AppIcon name="arrow" :size="16" /></RouterLink>
     </div>
-    <div class="notice-box"><strong>下一步由你确认</strong><p>全国 12315、交易平台售后等渠道可在“其他方案”中查看。本框架仅整理材料，不会向外部平台提交。</p></div>
+    <div class="notice-box"><strong>下一步由你确认</strong><p>全国 12315、交易平台售后等渠道可在“其他方案”中查看。草稿只保存在本案件，不会向外部平台提交。</p></div>
   </section>
 </template>

@@ -90,7 +90,7 @@ class WorkflowTests(unittest.TestCase):
     def test_reply_runs_graph_with_full_case_context(self):
         result = workflow.run_reply(self.case, '请耐心等待公司通知。')
         self.assertIn('处理期限', result)
-        self.assertIn('演示分析', result)
+        self.assertIn('仅供参考', result)
 
     def test_opponent_wrong_article_is_reported_without_allowing_it_as_authority(self):
         law = {'id': 'consumer-10', 'law_name': '中华人民共和国消费者权益保护法', 'article': '10',

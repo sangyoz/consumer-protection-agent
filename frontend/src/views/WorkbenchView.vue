@@ -3,7 +3,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCasesStore } from '../stores/cases'
 import { money, sections, steps, stageStep } from '../domain/case'
-import { dataMode } from '../api'
 import AppIcon from '../components/AppIcon.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import AnalysisPanel from '../components/workbench/AnalysisPanel.vue'
@@ -53,7 +52,7 @@ async function upload(event) {
   if (!files.length) return
   const allowed = /\.(pdf|docx|png|jpe?g|txt)$/i
   if (files.length > 5 || files.some(f => f.size > 10 * 1024 * 1024 || !allowed.test(f.name))) { store.notify('每次最多 5 份，单份不超过 10 MB，支持 PDF、DOCX、图片和 TXT'); return }
-  if (await store.act('addMaterials', item.value.id, files)) store.notify(dataMode === 'mock' ? '已记录文件名；演示模式不保存文件内容，暂不支持预览和下载' : '附件已保存，内容解析尚未接入')
+  if (await store.act('addMaterials', item.value.id, files)) store.notify('附件已添加')
 }
 </script>
 
@@ -98,7 +97,7 @@ async function upload(event) {
           <div class="panel-title"><h3>用户提供的证据信息</h3><span class="small muted">{{ item.materials.length }} 份</span></div>
           <MaterialList :item="item" />
           <label class="upload-btn" :class="{ disabled: store.busy || item.stage === 'resolved' }"><AppIcon name="upload" :size="16" />添加材料<input type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,.txt" multiple :disabled="store.busy || item.stage === 'resolved'" @change="upload" /></label>
-          <p class="fine-print">单份不超过 10 MB。{{ dataMode === 'mock' ? '演示模式仅记录文件名。' : '已上传文件的解析能力待接入。' }}</p>
+          <p class="fine-print">单份不超过 10 MB。</p>
         </aside>
         <div class="workspace-center"><component :is="panel" :item="item" :key="item.id + route.params.section" /></div>
         <aside v-if="rightOpen" class="panel workspace-right">

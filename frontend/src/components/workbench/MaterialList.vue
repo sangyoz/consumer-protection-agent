@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useCasesStore } from '../../stores/cases'
-import { api, dataMode } from '../../api'
+import { api } from '../../api'
 import { MATERIAL_KINDS, MATERIAL_SOURCES, missingMaterials, shortDate } from '../../domain/case'
 import AppIcon from '../AppIcon.vue'
 
@@ -72,7 +72,7 @@ async function remove(material) {
       <AppIcon name="file" :size="17" />
       <div class="evidence-file-body">
         <strong>{{ file.name }}</strong>
-        <small>{{ file.status === 'demo' ? '示例材料' : file.status === 'metadata' ? '仅记录名称' : '已上传 · 待解析' }} · {{ formatSize(file.size) }}<template v-if="file.uploadedAt"> · {{ shortDate(file.uploadedAt) }}</template></small>
+        <small>已上传 · {{ formatSize(file.size) }}<template v-if="file.uploadedAt"> · {{ shortDate(file.uploadedAt) }}</template></small>
         <span class="material-tags">
           <em class="tag">{{ MATERIAL_KINDS[file.kind] || MATERIAL_KINDS.other }}</em>
           <em class="tag tag-muted">{{ MATERIAL_SOURCES[file.source] || MATERIAL_SOURCES.user }}</em>
@@ -98,8 +98,7 @@ async function remove(material) {
       </ul>
     </div>
     <p v-else class="small muted gap-ok">必备材料已齐全，仍可补充合同、宣传页等佐证。</p>
-    <p v-if="dataMode === 'mock'" class="fine-print">演示模式只记录文件名、大小和类型，浏览器里没有真实文件，因此不能预览或下载；切换到后端接口模式后才会保存文件内容。</p>
-
+    
     <div v-if="previewUrl" class="preview-mask" @click="closePreview">
       <img :src="previewUrl" :alt="previewName" @click.stop />
       <button type="button" class="icon-btn preview-close" aria-label="关闭预览" @click="closePreview"><AppIcon name="close" :size="18" /></button>

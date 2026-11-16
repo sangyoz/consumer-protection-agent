@@ -127,12 +127,12 @@ def fallback_draft(operation: str, inventory: list[dict], action: str, reason: s
     reply = '请进一步明确处理期限、处理方案和计算依据，并保留本轮沟通记录。'
     if missing:
         reply += '同时请核对并补充：' + '、'.join(missing) + '。'
-    reply += '这是演示分析，不构成法律判断。'
+    reply += '建议仅供参考。'
     return {'category': '消费纠纷（待进一步核对）', 'missing': missing,
             'rights': '先核对交易事实、合同约定和证据，再评估可提出的退款、维修或履约诉求。',
             'strategy': '先补齐并核对证据，再要求商家明确处理方案与期限。' if action == 'collect_evidence' else '保留沟通记录，要求商家明确处理方案与期限；必要时由用户选择投诉渠道。',
             'script': '您好，请针对本次交易的争议和已提出的诉求，书面说明处理方案、计算依据及预计完成时间。',
-            'reply': reply, 'complaint': '投诉对象：待核对\n交易事实：待用户核对\n具体诉求：待用户确认\n证据清单：待补充\n法律依据：待检索核验\n尚未提交。',
+            'reply': reply, 'complaint': '投诉对象：待核对\n交易事实：待用户核对\n具体诉求：待用户确认\n证据清单：待补充\n法律依据：待补充\n尚未提交。',
             'citations': [], 'engine': 'demo', 'fallback_reason': reason or ('model_unavailable' if mode() == 'deepseek' else 'no_model_key')}
 
 
