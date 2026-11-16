@@ -15,7 +15,6 @@ const nav = [{ to: '/', icon: 'grid', text: '案件中心' }, { to: '/follow-up'
   <div class="app-shell" :class="{ 'focused-shell': focused }">
     <aside v-if="!focused" class="sidebar" :class="{ 'is-open': menuOpen }">
       <RouterLink to="/" class="brand" @click="menuOpen = false"><span class="brand-mark">理</span><span><strong>有理</strong><small>消费维权助手</small></span></RouterLink>
-      <RouterLink to="/cases/new" class="btn btn-primary sidebar-create" @click="menuOpen = false"><AppIcon name="plus" :size="18" />新建维权案件</RouterLink>
       <div class="nav-label">我的工作空间</div>
       <nav class="nav-list" aria-label="主导航">
         <RouterLink v-for="item in nav" :key="item.to" :to="item.to" :class="{ selected: item.to === '/' ? route.path === '/' || route.path.startsWith('/cases') : route.path === item.to }" @click="menuOpen = false"><AppIcon :name="item.icon" :size="19" />{{ item.text }}<AppIcon class="nav-arrow" name="chevron" :size="14" /></RouterLink>

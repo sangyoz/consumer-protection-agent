@@ -61,9 +61,6 @@ async function upload(event) {
     <div v-if="store.error" class="error-banner" role="alert">{{ store.error }}<button class="text-link" @click="store.load(route.params.id)">重新加载案件</button></div>
     <div v-if="!item" class="empty-state panel">{{ store.busy ? '正在加载案件…' : '暂时无法打开案件，请重试或返回案件中心。' }}</div>
     <template v-else>
-      <header class="workspace-heading"><div><span class="eyebrow">当前案件</span><h1>{{ item.title }}</h1></div><StatusBadge :stage="item.stage" /></header>
-      <div class="workbench-toolbar"><nav class="workbench-tabs" aria-label="案件阶段"><RouterLink v-for="(section, index) in sections" :key="section.key" :to="`/cases/${item.id}/${section.key}`" :class="{ active: section.key === route.params.section }"><span>{{ String(index + 1).padStart(2, '0') }}</span>{{ section.label }}</RouterLink></nav><div class="fold-buttons"><button class="icon-btn" :aria-pressed="leftOpen" :aria-label="leftOpen ? '收起案件信息' : '展开案件信息'" @click="leftOpen = !leftOpen"><AppIcon name="file" :size="17" /></button><button class="icon-btn" :aria-pressed="rightOpen" :aria-label="rightOpen ? '收起处理进度' : '展开处理进度'" @click="rightOpen = !rightOpen"><AppIcon name="clock" :size="17" /></button></div></div>
-      <div v-if="item.stage === 'resolved'" class="notice-box resolved-notice">本案已确认解决。历史材料与沟通记录可继续查看；如有新问题，可在“处理跟进”中记录并重新进入处理阶段。</div>
       <div class="workspace-layout" :class="{ 'hide-left': !leftOpen, 'hide-right': !rightOpen }">
         <aside v-if="leftOpen" class="panel case-context">
           <div class="panel-title"><h2>案件基本信息</h2><div class="panel-actions-inline"><button v-if="item.stage !== 'resolved' && !editing" type="button" class="text-link" @click="startEdit">编辑</button><button class="icon-btn" aria-label="收起案件信息" @click="leftOpen = false"><AppIcon name="close" :size="15" /></button></div></div>
@@ -99,7 +96,12 @@ async function upload(event) {
           <label class="upload-btn" :class="{ disabled: store.busy || item.stage === 'resolved' }"><AppIcon name="upload" :size="16" />添加材料<input type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,.txt" multiple :disabled="store.busy || item.stage === 'resolved'" @change="upload" /></label>
           <p class="fine-print">单份不超过 10 MB。</p>
         </aside>
-        <div class="workspace-center"><component :is="panel" :item="item" :key="item.id + route.params.section" /></div>
+        <div class="workspace-center">
+          <header class="workspace-heading"><div><span class="eyebrow">当前案件</span><h1>{{ item.title }}</h1></div><StatusBadge :stage="item.stage" /></header>
+          <div class="workbench-toolbar"><nav class="workbench-tabs" aria-label="案件阶段"><RouterLink v-for="(section, index) in sections" :key="section.key" :to="`/cases/${item.id}/${section.key}`" :class="{ active: section.key === route.params.section }"><span>{{ String(index + 1).padStart(2, '0') }}</span>{{ section.label }}</RouterLink></nav><div class="fold-buttons"><button class="icon-btn" :aria-pressed="leftOpen" :aria-label="leftOpen ? '收起案件信息' : '展开案件信息'" @click="leftOpen = !leftOpen"><AppIcon name="file" :size="17" /></button><button class="icon-btn" :aria-pressed="rightOpen" :aria-label="rightOpen ? '收起处理进度' : '展开处理进度'" @click="rightOpen = !rightOpen"><AppIcon name="clock" :size="17" /></button></div></div>
+          <div v-if="item.stage === 'resolved'" class="notice-box resolved-notice">本案已确认解决。历史材料与沟通记录可继续查看；如有新问题，可在“处理跟进”中记录并重新进入处理阶段。</div>
+          <component :is="panel" :item="item" :key="item.id + route.params.section" />
+        </div>
         <aside v-if="rightOpen" class="panel workspace-right">
           <div class="panel-title"><h2>处理进度</h2><button class="icon-btn" aria-label="收起处理进度" @click="rightOpen = false"><AppIcon name="close" :size="15" /></button></div>
           <ol class="compact-progress"><li v-for="(step, index) in steps" :key="step" :class="{ done: index < stageStep[item.stage], current: index === stageStep[item.stage] }"><span class="compact-step"><AppIcon v-if="index < stageStep[item.stage]" name="check" :size="12" /><span v-else>{{ index + 1 }}</span></span><span>{{ step }}</span></li></ol>

@@ -83,7 +83,7 @@ async function save() {
 
 <template>
   <div class="page">
-    <div class="page-heading"><div><div class="eyebrow">持续跟进</div><h1>处理到哪一步了？</h1><p>记下新的回复、受理情况、处理期限和实际结果，方便下一次继续。</p></div></div>
+    <div class="page-heading"><div><div class="eyebrow">持续跟进</div><h1>处理到哪一步了？</h1></div></div>
     <div v-if="store.error" class="error-banner" role="alert">{{ store.error }}</div>
     <div v-if="store.busy && !store.items.length" class="empty-state">正在加载案件…</div>
     <div v-else-if="!store.items.length" class="panel empty-state"><h2>还没有可以跟进的案件</h2><RouterLink to="/cases/new" class="btn btn-primary">新建案件</RouterLink></div>

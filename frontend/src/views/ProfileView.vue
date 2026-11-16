@@ -41,7 +41,7 @@ function save() {
 
 <template>
   <div class="page profile-page">
-    <div class="page-heading"><div><div class="eyebrow">个人中心</div><h1>我的基本资料</h1><p>先保留必要信息，后续按投诉渠道要求补充。</p></div></div>
+    <div class="page-heading"><div><div class="eyebrow">个人中心</div><h1>我的基本资料</h1></div></div>
 
     <form class="panel content-panel" @submit.prevent="save">
       <div class="profile-intro">
@@ -54,8 +54,8 @@ function save() {
 
       <label class="field">昵称<input v-model="form.nickname" maxlength="50" placeholder="如何称呼你" autocomplete="nickname" /></label>
       <label class="field">姓名<input v-model="form.name" maxlength="30" placeholder="与身份证件一致的姓名" autocomplete="name" /></label>
-      <label class="field">联系电话（选填）<input v-model="form.phone" maxlength="30" type="tel" placeholder="需要投诉时再补充也可以" autocomplete="tel" /><small v-if="errors.phone" class="field-error">{{ errors.phone }}</small></label>
-      <label class="field">身份证号（选填）<input v-model="form.idCard" maxlength="18" placeholder="仅在正式投诉需要时填写" autocomplete="off" /><small v-if="errors.idCard" class="field-error">{{ errors.idCard }}</small></label>
+      <label class="field">联系电话<input v-model="form.phone" maxlength="30" type="tel" placeholder="（选填）" autocomplete="tel" /><small v-if="errors.phone" class="field-error">{{ errors.phone }}</small></label>
+      <label class="field">身份证号<input v-model="form.idCard" maxlength="18" placeholder="（选填）" autocomplete="off" /><small v-if="errors.idCard" class="field-error">{{ errors.idCard }}</small></label>
 
       <div v-if="form.name || form.phone || form.idCard" class="profile-mask-preview">
         <span class="field-caption">脱敏预览</span>

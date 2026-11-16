@@ -57,7 +57,7 @@ async function generate() {
     complaintAttachments: selectedIds.value,
   }
   await store.act('updateCase', props.item.id, payload)
-  if (await store.act('generateComplaint', props.item.id)) store.notify('投诉草稿已生成，请核对后自行提交')
+  if (await store.act('generateComplaint', props.item.id)) store.notify('投诉内容已生成，请核对后自行提交')
 }
 
 async function copy() {
@@ -68,71 +68,16 @@ async function copy() {
 <template>
   <section class="panel content-panel">
     <div class="panel-title"><h2>投诉材料准备</h2><span class="subtle-tag">用户核对后提交</span></div>
-    <p class="muted body-copy">按步骤核对投诉对象、事实、诉求和证据；已有信息会自动带入，可在表单中修改。</p>
+    <p class="muted body-copy">依据已填写的案件信息与上传材料，整理成一段可直接提交的投诉内容。</p>
 
-    <div class="evidence-checks">
-      <div v-for="check in checks" :key="check.kind">
-        <AppIcon :name="check.count ? 'check' : 'file'" :size="17" />
-        <span>{{ check.label }}</span>
-        <span class="small muted">{{ check.count ? `${check.count} 份` : '待补充' }}</span>
-      </div>
-      <div>
-        <AppIcon :name="item.messages.filter(m => m.role === 'merchant').length ? 'check' : 'file'" :size="17" />
-        <span>与商家的沟通记录</span>
-        <span class="small muted">{{ item.messages.filter(m => m.role === 'merchant').length }} 条商家回复</span>
-      </div>
+    <div class="panel-actions complaint-actions">
+      <button class="btn btn-primary" :disabled="store.busy || item.stage === 'resolved'" @click="generate">{{ store.busy ? '正在整理…' : '生成投诉内容' }}</button>
     </div>
 
-    <div class="stepper">
-      <span v-for="(label, index) in steps" :key="label" :class="{ done: index < step, current: index === step }"><i>{{ index + 1 }}</i>{{ label }}</span>
-    </div>
-
-    <form class="complaint-form" @submit.prevent="generate">
-      <div v-if="step === 0" class="form-grid">
-        <label class="field">商家名称<input v-model="form.merchant" maxlength="200" /></label>
-        <label class="field">实际收款方<input v-model="form.payee" maxlength="200" /></label>
-        <label class="field">交易平台<input v-model="form.platform" maxlength="100" /></label>
-        <label class="field">统一社会信用代码<input v-model="form.creditCode" maxlength="30" /></label>
-      </div>
-
-      <div v-if="step === 1" class="field">
-        <span class="field-caption">事实与经过</span>
-        <textarea v-model="form.summary" rows="5" maxlength="10000" required></textarea>
-      </div>
-
-      <div v-if="step === 2" class="field">
-        <span class="field-caption">希望如何解决</span>
-        <textarea v-model="form.goal" rows="3" maxlength="1000" required></textarea>
-      </div>
-
-      <div v-if="step === 3" class="evidence-pick">
-        <p class="small muted">勾选随投诉一并提交的材料（默认全部纳入）。</p>
-        <label v-for="file in item.materials" :key="file.id" class="evidence-pick-row">
-          <input type="checkbox" :checked="selectedIds.includes(file.id)" :disabled="item.stage === 'resolved'" @change="toggle(file.id)" />
-          <span><strong>{{ file.name }}</strong><em>{{ MATERIAL_KINDS[file.kind] || MATERIAL_KINDS.other }}</em></span>
-        </label>
-        <p v-if="!item.materials.length" class="small muted">暂无可勾选的材料，可先在左侧补充证据。</p>
-      </div>
-
-      <div class="step-nav">
-        <button v-if="step > 0" type="button" class="btn btn-secondary" @click="prev">上一步</button>
-        <button v-if="step < steps.length - 1" type="button" class="btn btn-primary" :disabled="!stepValid" @click="next">下一步<AppIcon name="arrow" :size="16" /></button>
-      </div>
-    </form>
-
-    <div class="panel-title"><h3>投诉内容预览</h3><button v-if="item.complaint" class="text-link" @click="copy"><AppIcon name="copy" :size="15" />复制草稿</button></div>
+    <div class="panel-title complaint-preview-head"><h3>投诉内容</h3><button v-if="item.complaint" class="text-link" @click="copy"><AppIcon name="copy" :size="15" />复制内容</button></div>
     <pre v-if="item.complaint" class="complaint-preview">{{ item.complaint }}</pre>
-    <div v-else class="inline-empty"><AppIcon name="file" :size="30" /><p>还没有投诉草稿</p><span class="small muted">完成上方步骤后，点击下方按钮整理。</span></div>
+    <div v-else class="inline-empty"><AppIcon name="file" :size="30" /><p>还没有投诉内容</p><span class="small muted">点击上方按钮，会依据已填写的案件信息整理成一段可直接提交的投诉内容。</span></div>
 
-    <div v-if="selectedMaterials.length" class="draft-attachments">
-      <span class="field-caption">草稿附件清单</span>
-      <ul><li v-for="file in selectedMaterials" :key="file.id">{{ file.name }}</li></ul>
-    </div>
-
-    <div class="panel-actions">
-      <button class="btn btn-primary" :disabled="store.busy || item.stage === 'resolved' || !stepValid" @click="generate">{{ store.busy ? '正在整理…' : item.complaint ? '重新生成草稿' : '生成投诉材料' }}</button>
-      <RouterLink :to="{ path: '/follow-up', query: { case: item.id } }" class="btn btn-secondary">记录处理进度<AppIcon name="arrow" :size="16" /></RouterLink>
-    </div>
-    <div class="notice-box"><strong>下一步由你确认</strong><p>全国 12315、交易平台售后等渠道可在“其他方案”中查看。草稿只保存在本案件，不会向外部平台提交。</p></div>
+    <div class="notice-box"><strong>下一步由你确认</strong><p>内容只保存在本案件，不会向外部平台提交；核对后可复制到对应渠道填写。</p></div>
   </section>
 </template>

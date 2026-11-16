@@ -142,7 +142,6 @@ async function submit() {
 <template>
   <div class="intake-layout">
     <aside class="history-sidebar" aria-label="历史案件">
-      <RouterLink to="/cases/new" class="btn btn-primary"><AppIcon name="plus" :size="17" />新建案件</RouterLink>
       <div class="history-heading">历史案件 <span>{{ store.items.length }}</span></div>
       <RouterLink v-for="item in store.items" :key="item.id" :to="`/cases/${item.id}/analysis`" class="history-item"><AppIcon name="chat" :size="16" /><div><strong>{{ item.title }}</strong><StatusBadge :stage="item.stage" /></div></RouterLink>
       <p v-if="!store.items.length" class="fine-print">新建的案件会保存在这里。</p>
@@ -153,7 +152,6 @@ async function submit() {
         <span class="intake-emblem">理</span>
         <div class="eyebrow">有理 · 消费维权助手</div>
         <h1>说说你遇到的问题</h1>
-        <p>从发生了什么开始，证据和细节可以慢慢补充。</p>
         <div class="example-list">
           <button v-for="example in examples" :key="example.title" type="button" class="example-chip" @click="form.summary = example.text">{{ example.title }}<AppIcon name="plus" :size="13" /></button>
         </div>
