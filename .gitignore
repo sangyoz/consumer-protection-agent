@@ -5,9 +5,11 @@ __pycache__/
 *.pyc
 .env
 *.db
+*.sqlite3
 backend/uploads/*
 !backend/uploads/.gitkeep
 .qa/
+.run/
 
 # 本机保留的原始需求与视觉参考，不包含在代码框架中。
 /84157ffee198c24b9825adceb042a01d.jpg

@@ -1,0 +1,37 @@
+{
+  "total_articles": 1412,
+  "files": [
+    {
+      "file": "中华人民共和国民法典.txt",
+      "encoding": "utf-8-sig",
+      "articles": 1260,
+      "first_article": "1",
+      "last_article": "1260",
+      "pending_metadata": [],
+      "warnings": [],
+      "raw_sha256": "17fd62bd0a9e7684d99a332517d0c2735718f6b1e2de593c1590b534426492ed"
+    },
+    {
+      "file": "中华人民共和国消费者权益保护法.txt",
+      "encoding": "utf-8-sig",
+      "articles": 63,
+      "first_article": "1",
+      "last_article": "63",
+      "pending_metadata": [],
+      "warnings": [],
+      "raw_sha256": "1f48c1ee6ae5138dc62d6fdbea1fe2d5446f6e85ade781dc8ca3b2336de93128"
+    },
+    {
+      "file": "中华人民共和国电子商务法.txt",
+      "encoding": "utf-8-sig",
+      "articles": 89,
+      "first_article": "1",
+      "last_article": "89",
+      "pending_metadata": [],
+      "warnings": [],
+      "raw_sha256": "2cf39f5ee6fc41ea68d68ee01548f085191068987e6c80b36940c3cf6175724a"
+    }
+  ],
+  "ready": true,
+  "ready_output_updated": true
+}

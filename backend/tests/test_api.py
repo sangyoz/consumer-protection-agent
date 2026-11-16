@@ -1,6 +1,8 @@
 """运行：在 backend 目录执行 python -m unittest discover -s tests -v。"""
 import tempfile
 import unittest
+import os
+from unittest.mock import patch
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -10,11 +12,16 @@ from sqlalchemy.pool import StaticPool
 
 from app import main
 from app.database import get_session
+from app.services import agent
 
 
 class ApiFlowTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
+        self.env = patch.dict(os.environ, {'DEEPSEEK_API_KEY': '', 'BOCHA_API_KEY': '',
+                                           'LAW_CORPUS_PATH': '', 'LAW_DB_PATH': str(Path(self.temp.name) / 'legal.sqlite3')})
+        self.env.start()
+        agent._model.cache_clear()
         self.engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
         self.original_engine, self.original_uploads = main.engine, main.UPLOAD_DIR
         main.engine = self.engine
@@ -33,6 +40,8 @@ class ApiFlowTests(unittest.TestCase):
         main.app.dependency_overrides.clear()
         main.engine, main.UPLOAD_DIR = self.original_engine, self.original_uploads
         self.engine.dispose()
+        self.env.stop()
+        agent._model.cache_clear()
         self.temp.cleanup()
 
     def create_case(self):
@@ -227,6 +236,15 @@ class ApiFlowTests(unittest.TestCase):
         case_id = self.create_case()
         self.assertEqual(self.client.post(f'/api/cases/{case_id}/messages', json={'content': ' '}).status_code, 422)
         self.assertEqual(self.client.post(f'/api/cases/{case_id}/progress', json={'note': '更新', 'stage': 'invalid'}).status_code, 422)
+
+    def test_evidence_confirmation_is_recorded_as_user_claim(self):
+        case_id = self.create_case()
+        response = self.client.post(f'/api/cases/{case_id}/evidence', json={'key': 'transaction', 'status': 'user_confirmed', 'note': '已核对订单号'})
+        self.assertEqual(response.status_code, 200)
+        entry = next(row for row in response.json()['evidence_checklist'] if row['key'] == 'transaction')
+        self.assertEqual(entry['status'], 'user_confirmed')
+        self.assertFalse(entry['content_verified'])
+        self.assertEqual(self.client.post(f'/api/cases/{case_id}/evidence', json={'key': 'payment', 'status': 'not_applicable'}).status_code, 400)
 
 
 if __name__ == '__main__':

@@ -1,0 +1,23 @@
+{
+  "中华人民共和国民法典.txt": {
+    "law_name": "中华人民共和国民法典",
+    "source": "https://flk.npc.gov.cn/detail2.html?ZmY4MDgxODE3OTZhNjM2YTAxNzk4MjJhMTk4MzE4MjA%3D",
+    "effective_from": "2021-01-01",
+    "reviewed_at": "2026-11-15",
+    "effective_to": null
+  },
+  "中华人民共和国消费者权益保护法.txt": {
+    "law_name": "中华人民共和国消费者权益保护法",
+    "source": "https://flk.npc.gov.cn/detail2.html?ZmY4MDgxODE4ZTZjZWYxYjAxOGVlYzZmYjAxZTA3NjM%3D",
+    "effective_from": "2014-03-15",
+    "reviewed_at": "2026-11-15",
+    "effective_to": null
+  },
+  "中华人民共和国电子商务法.txt": {
+    "law_name": "中华人民共和国电子商务法",
+    "source": "https://flk.npc.gov.cn/detail2.html?ZmY4MDgxODE2N2EwMjlkMjAxNjc5ZjJmM2E0ZjA3NjM%3D",
+    "effective_from": "2019-01-01",
+    "reviewed_at": "2026-11-15",
+    "effective_to": null
+  }
+}

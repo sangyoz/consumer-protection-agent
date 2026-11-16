@@ -245,6 +245,12 @@ svg { flex-shrink: 0; }
 .timeline p { font-size: 12px; line-height: 1.9; color: #697a94; margin-top: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .check-row { display: flex; align-items: flex-start; gap: 8px; color: #6d7e98; font-size: 12px; line-height: 1.8; }
 .check-row input { width: auto; margin-top: 5px; accent-color: var(--brand); }
+.evidence-checklist { display: grid; gap: 8px; margin: 18px 0; }
+.evidence-checklist h3 { margin: 0 0 3px; font-size: 14px; }
+.evidence-checklist .check-row { align-items: center; }
+.evidence-status { display: block; color: #8491a5; font-size: 10px; }
+.audit-trace { margin-top: 16px; color: #6d7e98; font-size: 11px; }
+.audit-trace summary { cursor: pointer; }
 .followup-grid form > .btn { margin-top: 20px; }
 .goal-plan { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 18px; }
 .goal-tier { display: grid; gap: 0; }

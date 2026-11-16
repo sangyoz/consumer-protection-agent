@@ -12,9 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .database import BACKEND_DIR, Base, CaseRecord, engine, get_session
-from .schemas import CaseInput, CaseUpdate, ExtractInput, MaterialKindInput, MessageInput, ProgressInput
-from .services import agent, complaint, rules
-from .services import extract as extractor
+from .agents import workflow as agent_workflow
+from .schemas import CaseInput, CaseUpdate, EvidenceInput, ExtractInput, MaterialKindInput, MessageInput, ProgressInput
+from .services import agent, complaint, extract as extractor, retrieval, rules
 
 UPLOAD_DIR = BACKEND_DIR / 'uploads'
 MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -25,10 +25,16 @@ ALLOWED_SUFFIXES = {'.pdf', '.docx', '.png', '.jpg', '.jpeg', '.txt'}
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
     UPLOAD_DIR.mkdir(exist_ok=True)
+    law_corpus = os.getenv('LAW_CORPUS_PATH', '').strip()
+    if law_corpus:
+        corpus_path = Path(law_corpus)
+        if not corpus_path.is_absolute():
+            corpus_path = BACKEND_DIR / corpus_path
+        retrieval.import_laws(corpus_path)
     yield
 
 
-app = FastAPI(title='有理消费维权助手 API', version='0.1.0', lifespan=lifespan, description='双人开发骨架；Agent 使用模拟规则，未接入真实法律检索与投诉提交。')
+app = FastAPI(title='有理消费维权助手 API', version='0.2.0', lifespan=lifespan, description='LangGraph 证据盘点、检索、策略生成与引用校验；不自动提交投诉。')
 app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')], allow_credentials=False, allow_methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], allow_headers=['*'])
 
 
@@ -59,9 +65,15 @@ def save(record: CaseRecord, case: dict, session: Session):
     return case
 
 
+def save_agent_state(case: dict, result: dict):
+    case['evidence_checklist'] = result['evidence_checklist']
+    case['agent_state'] = {key: result[key] for key in ('decision', 'retrieval', 'audit', 'engine', 'fallback_reason', 'trace')}
+    case['analysis'] = result
+
+
 @app.get('/api/health')
 def health():
-    return {'status': 'ok', 'agentMode': 'demo'}
+    return {'status': 'ok', 'agentMode': agent.mode(), 'workflow': 'langgraph'}
 
 
 @app.post('/api/extract')
@@ -126,10 +138,10 @@ def update_case(case_id: str, input: CaseUpdate, session: Session = Depends(get_
 def analyze_case(case_id: str, session: Session = Depends(get_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
-    case['analysis'] = agent.analyze(case)
+    save_agent_state(case, agent_workflow.run_analysis(case))
     if case['stage'] == 'collecting':
         case['stage'] = 'analyzing'
-    record_event(case, '已生成演示案情分析，法律依据待核验')
+    record_event(case, '已生成案情分析与证据清单，法律适用条件待核对')
     return save(record, case, session)
 
 
@@ -138,10 +150,14 @@ def send_message(case_id: str, input: MessageInput, session: Session = Depends(g
     record, case = get_case(case_id, session)
     ensure_open(case)
     created_at = now()
+    result = agent_workflow.run_case('reply', case, input.content)
+    save_agent_state(case, result)
+    response_text = result['reply']
     case['messages'].append({'id': str(uuid4()), 'role': 'merchant', 'content': input.content, 'createdAt': created_at})
-    case['messages'].append({'id': str(uuid4()), 'role': 'assistant', 'content': agent.reply(case, input.content), 'createdAt': created_at})
+    case['messages'].append({'id': str(uuid4()), 'role': 'assistant', 'content': response_text, 'createdAt': created_at})
     case['stage'] = 'negotiating'
-    record_event(case, '记录商家回复并生成演示沟通建议')
+    mode_label = 'DeepSeek' if result['engine'] == 'deepseek' else '演示'
+    record_event(case, f'记录商家回复并生成{mode_label}沟通建议')
     return save(record, case, session)
 
 
@@ -149,9 +165,25 @@ def send_message(case_id: str, input: MessageInput, session: Session = Depends(g
 def generate_complaint(case_id: str, session: Session = Depends(get_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
-    case['complaint'] = complaint.generate(case)
+    result = agent_workflow.run_complaint(case)
+    save_agent_state(case, result)
+    case['complaint'] = result['complaint']
     case['stage'] = 'complaining'
     record_event(case, '生成投诉草稿，尚未向任何平台提交')
+    return save(record, case, session)
+
+
+@app.post('/api/cases/{case_id}/evidence')
+def update_evidence(case_id: str, input: EvidenceInput, session: Session = Depends(get_session)):
+    record, case = get_case(case_id, session)
+    ensure_open(case)
+    if input.status == 'not_applicable' and input.key in ('transaction', 'payment'):
+        raise HTTPException(400, '核心交易与付款证据不能跳过；没有时请保持缺失状态')
+    from .services import evidence
+    entries = {row['key']: row for row in evidence.assess(case)}
+    entries[input.key].update(status=input.status, note=input.note, content_verified=False)
+    case['evidence_checklist'] = list(entries.values())
+    record_event(case, '更新用户自述证据状态，系统尚未核验附件内容')
     return save(record, case, session)
 
 

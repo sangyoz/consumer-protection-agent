@@ -5,7 +5,7 @@ import { seedCases } from './seed'
 import { analyzeDemo, replyDemo, complaintDemo } from './demo-engine'
 
 export const dataMode = import.meta.env.VITE_DATA_MODE === 'api' ? 'api' : 'mock'
-const http = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || '/api', timeout: 30000 })
+const http = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || '/api', timeout: 180000 })
 const storageKey = 'youli.cases.v1'
 let memory = null
 function read() {
@@ -44,6 +44,7 @@ const mock = {
   async updateProgress(id, payload) { return mutate(id, item => { if (payload.stage === 'resolved' && !payload.confirmed) throw new Error('请先确认诉求已实际履行。'); if (payload.stage) item.stage = payload.stage; const followup = { id: crypto.randomUUID(), note: payload.note, stage: payload.stage || null, confirmed: payload.confirmed, channel: payload.channel || null, caseNo: payload.caseNo || null, acceptStatus: payload.acceptStatus || null, deadline: payload.deadline || null, createdAt: new Date().toISOString() }; item.followups = item.followups || []; item.followups.push(followup); let detail = payload.note; if (followup.channel) detail += `（渠道：${followup.channel}）`; if (followup.caseNo) detail += `（编号：${followup.caseNo}）`; event(item, detail) }) },
   async deleteCase(id) { const items = read(); const index = items.findIndex(c => c.id === id); if (index < 0) throw new Error('案件不存在，请返回案件中心。'); items.splice(index, 1); write(items); return { ok: true, id } },
   async extract(text) { return extractFields(text) },
+  async updateEvidence(id, payload) { return mutate(id, item => { ensureOpen(item); item.evidence_checklist ||= []; const index = item.evidence_checklist.findIndex(row => row.key === payload.key); const row = { ...(item.evidence_checklist[index] || {}), key: payload.key, status: payload.status, note: payload.note || '', content_verified: false }; if (index < 0) item.evidence_checklist.push(row); else item.evidence_checklist[index] = row; event(item, '更新用户自述证据状态；附件内容尚未核验') }) },
 }
 const real = {
   async listCases() { return (await http.get('/cases')).data },
@@ -60,5 +61,6 @@ const real = {
   async updateProgress(id, payload) { return (await http.post(`/cases/${id}/progress`, payload)).data },
   async deleteCase(id) { return (await http.delete(`/cases/${id}`)).data },
   async extract(text) { return (await http.post('/extract', { text })).data },
+  async updateEvidence(id, payload) { return (await http.post(`/cases/${id}/evidence`, payload)).data },
 }
 export const api = dataMode === 'mock' ? mock : real
