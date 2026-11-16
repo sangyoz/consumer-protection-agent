@@ -31,16 +31,22 @@ const GOALS = [
   [['补发', '重发'], '补发'],
 ]
 
-const MERCHANT_SUFFIXES = ['旗舰店', '专卖店', '专营店', '商店', '店铺', '公司', '健身房', '超市', '餐厅', '酒店', '商城', '门店', '店']
+// 后缀越长越靠前，避免「旗舰店」被「店」截断。
+const MERCHANT_SUFFIXES = ['官方旗舰店', '旗舰店', '专卖店', '专营店', '官方店', '网店', '商店', '店铺', '公司', '健身房', '超市', '餐厅', '饭店', '餐馆', '酒店', '宾馆', '商城', '商场', '门店', '药店', '药房', '影楼', '旅行社', '维修店', '便利店', '经营部', '批发部', '店']
 const MERCHANT_STOP = new Set(['商家', '店家', '客服', '平台', '卖家', '对方', '公司', '门店', '实体店', '线下门店'])
 const MERCHANT_VERB_PREFIX = ['联系', '咨询', '询问', '投诉', '找到', '跟', '和', '向', '这家', '那家', '该']
+const MERCHANT_CALL_RE = /(?:商家|卖家|店铺|店名|老板|对方)(?:名字|名称|叫啥|叫什么)?\s*(?:叫|是|为)\s*[「“"']?([\u4e00-\u9fa5A-Za-z0-9]{2,20})[」”"']?/
 
 const PRODUCT_VERBS = ['购买了', '购买', '买了', '买', '入手了', '入手', '下单了', '下单', '订购了', '订购', '点了', '订了', '叫了']
-const PRODUCT_NOISE = ['右侧', '左侧', '这边', '那边', '收到', '发现', '结果', '但是', '但', '可是', '却', '一直', '现在', '坏了', '有问题', '无法', '不能', '没有声音', '无声音', '没声音']
+const PRODUCT_NOISE = ['右侧', '左侧', '这边', '那边', '收到', '发现', '结果', '但是', '但', '可是', '却', '一直', '现在', '坏了', '有问题', '无法', '不能', '没有声音', '无声音', '没声音', '过期', '变质', '发霉', '破损', '漏液']
 
 const AMOUNT_RE = /(?:¥|￥)\s*(\d[\d,]*(?:\.\d{1,2})?)|(\d[\d,]*(?:\.\d{1,2})?)\s*(?:元|块钱|块)/g
+// 口语尾数：399块9 / 89块9毛；后面紧跟「月/日/年/号」时不当作金额小数。
+const AMOUNT_FRACTION_RE = /^\s*([0-9])\s*(?:毛|角)?(?![0-9月日年号])/
+const PRODUCT_AMOUNT_RE = /(?:¥|￥)|(\d[\d,]*(?:\.\d{1,2})?)\s*(?:元|块|毛)/
 const FULL_DATE_RE = /(\d{4})\s*[年./-]\s*(\d{1,2})\s*[月./-]\s*(\d{1,2})\s*[日号]?/
 const SHORT_DATE_RE = /(?<!\d)(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]/
+const FESTIVALS = [['双十一', [11, 11]], ['双11', [11, 11]]]
 const CREDIT_RE = /(?<![0-9A-Z])([0-9A-HJ-NPQRTUWXY]{18})(?![0-9A-Z])/
 
 const pad = value => String(value).padStart(2, '0')
@@ -53,9 +59,15 @@ function entry(field, value, snippet, start, end) {
 function findAmount(text) {
   for (const match of text.matchAll(AMOUNT_RE)) {
     const raw = (match[1] || match[2]).replace(/,/g, '')
-    const value = Number(raw)
+    let value = Number(raw)
+    let end = match.index + match[0].length
+    const fraction = text.slice(end, end + 4).match(AMOUNT_FRACTION_RE)
+    if (fraction && !raw.includes('.')) {
+      value = Math.round((value + Number(fraction[1]) / 10) * 10) / 10
+      end += fraction[0].length
+    }
     if (value > 0 && value <= 100000000) {
-      return { value, snippet: match[0].trim(), start: match.index, end: match.index + match[0].length }
+      return { value, snippet: text.slice(match.index, end).trim(), start: match.index, end }
     }
   }
   return null
@@ -76,6 +88,12 @@ function findProduct(text) {
     const start = index + verb.length
     let head = text.slice(start, start + 40).split(/[，,。；;！!？?\n]/)[0]
     head = head.replace(/^[了]?(?:一|两|三|几|半)?[个台部双件张只瓶盒套份]?/, '')
+    // 商品名后面常跟金额（「无线耳机399元」），先截掉，避免金额混进商品名。
+    const amountHit = head.match(PRODUCT_AMOUNT_RE)
+    if (amountHit) {
+      const at = amountHit.index
+      head = at === 0 ? head.slice(amountHit[0].length).replace(/^的/, '') : head.slice(0, at)
+    }
     for (const noise of PRODUCT_NOISE) {
       if (head.includes(noise)) head = head.split(noise)[0]
     }
@@ -89,22 +107,34 @@ function findProduct(text) {
 }
 
 function findGoal(text) {
-  let best = null
+  const hits = []
   GOALS.forEach(([keywords, goal]) => {
-    keywords.forEach(keyword => {
-      const index = text.indexOf(keyword)
-      if (index >= 0 && (!best || index < best.index)) best = { index, goal, keyword }
-    })
+    const found = keywords.map(keyword => ({ index: text.indexOf(keyword), keyword })).filter(item => item.index >= 0)
+    if (found.length) {
+      found.sort((a, b) => a.index - b.index)
+      hits.push({ index: found[0].index, keyword: found[0].keyword, goal })
+    }
   })
-  if (!best) return null
-  return { value: best.goal, snippet: best.keyword, start: best.index, end: best.index + best.keyword.length }
+  if (!hits.length) return null
+  hits.sort((a, b) => a.index - b.index)
+  const value = hits.map(hit => hit.goal).join('、')
+  const { index, keyword } = hits[0]
+  return { value, snippet: keyword, start: index, end: index + keyword.length }
 }
 
 function findMerchant(text) {
+  const call = text.match(MERCHANT_CALL_RE)
+  if (call) {
+    const name = call[1]
+    const start = call.index + call[0].lastIndexOf(name)
+    if (name.length >= 3 && !MERCHANT_STOP.has(name) && !/^[我你他她它]/.test(name)) {
+      return { value: name, snippet: name, start, end: start + name.length }
+    }
+  }
   const pattern = new RegExp(`([\\u4e00-\\u9fa5A-Za-z0-9]{2,20}(?:${MERCHANT_SUFFIXES.join('|')}))`, 'g')
   for (const match of text.matchAll(pattern)) {
     let name = match[1]
-    name = name.replace(/^(?:这家|那家|该|这个|那个|一家)/, '')
+    name = name.replace(/^(?:这家|那家|该|这个|那个|一家|在|于|从)/, '')
     if (name.length < 3 || MERCHANT_STOP.has(name)) continue
     if (MERCHANT_VERB_PREFIX.some(prefix => name.startsWith(prefix))) continue
     const offset = Math.max(match[1].indexOf(name), 0)
@@ -120,6 +150,16 @@ function findTradeTime(text, today) {
     const date = new Date(Number(full[1]), Number(full[2]) - 1, Number(full[3]))
     if (date.getFullYear() === Number(full[1]) && date.getMonth() === Number(full[2]) - 1 && date.getDate() === Number(full[3]) && date <= today) {
       return { value: iso(date), snippet: full[0], start: full.index, end: full.index + full[0].length }
+    }
+  }
+  for (const [word, [month, day]] of FESTIVALS) {
+    const index = text.indexOf(word)
+    if (index < 0) continue
+    for (const year of [today.getFullYear(), today.getFullYear() - 1]) {
+      const date = new Date(year, month - 1, day)
+      if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day && date <= today) {
+        return { value: iso(date), snippet: word, start: index, end: index + word.length }
+      }
     }
   }
   const short = text.match(SHORT_DATE_RE)
