@@ -329,3 +329,22 @@ svg { flex-shrink: 0; }
 ::-webkit-scrollbar-thumb { background: #d8dfeb; border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: #c3cddd; border: 2px solid transparent; background-clip: content-box; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+
+/* 跟进页：页面本身不滚动，处理记录与反馈表单各自内部滚动，两栏等高等宽 */
+.followup-page { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 26px; }
+.followup-page > .page-heading, .followup-page > .error-banner, .followup-page > .empty-state, .followup-page > .followup-picker { flex: 0 0 auto; }
+.followup-page .followup-picker { margin-bottom: 16px; }
+.followup-page .followup-grid { flex: 1; min-height: 0; align-items: stretch; }
+.followup-page .followup-grid > section.content-panel { min-height: 0; overflow-y: auto; }
+.followup-page .followup-grid > form.content-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.followup-page .followup-form-body { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.followup-page .followup-actions { flex: 0 0 auto; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); background: #fff; }
+.followup-page .followup-actions .btn { margin-top: 0; }
+
+@media (max-width: 900px) {
+  .followup-page { display: block; overflow-y: auto; }
+  .followup-page .followup-grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+  .followup-page .followup-grid > section.content-panel, .followup-page .followup-grid > form.content-panel { display: block; overflow: visible; }
+  .followup-page .followup-form-body { overflow: visible; padding-right: 0; }
+  .followup-page .followup-actions { margin-top: 16px; }
+}

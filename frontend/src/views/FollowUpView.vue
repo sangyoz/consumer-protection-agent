@@ -82,7 +82,7 @@ async function save() {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page followup-page">
     <div class="page-heading"><div><div class="eyebrow">持续跟进</div><h1>处理到哪一步了？</h1></div></div>
     <div v-if="store.error" class="error-banner" role="alert">{{ store.error }}</div>
     <div v-if="store.busy && !store.items.length" class="empty-state">正在加载案件…</div>
@@ -131,6 +131,7 @@ async function save() {
 
         <form class="panel content-panel" @submit.prevent="save">
           <h2>添加新的处理反馈</h2>
+          <div class="followup-form-body">
           <label class="field">发生了什么？<textarea v-model="note" rows="5" maxlength="3000" required placeholder="例如：商家承诺三个工作日内退款，仍需等待实际到账。"></textarea></label>
 
           <div class="form-grid">
@@ -174,8 +175,11 @@ async function save() {
             <label class="field">结案备注<textarea v-model="resolutionNote" rows="3" maxlength="1000" placeholder="例如：退款已全额到账，剩余优惠券补偿未主张。"></textarea></label>
           </div>
 
-          <p class="fine-print">商家口头同意或投诉提交成功，均不代表问题已解决。</p>
-          <button class="btn btn-primary" :disabled="store.busy || !note.trim() || (stage === 'resolved' && !confirmed)">{{ store.busy ? '正在保存…' : '保存处理反馈' }}</button>
+          </div>
+          <div class="followup-actions">
+            <p class="fine-print">商家口头同意或投诉提交成功，均不代表问题已解决。</p>
+            <button class="btn btn-primary" :disabled="store.busy || !note.trim() || (stage === 'resolved' && !confirmed)">{{ store.busy ? '正在保存…' : '保存处理反馈' }}</button>
+          </div>
         </form>
       </div>
     </template>
