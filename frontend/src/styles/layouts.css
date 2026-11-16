@@ -12,6 +12,7 @@
 .case-list-layout .case-card h2 { margin-bottom: 7px; }
 .case-row-meta { display: flex; flex-wrap: wrap; gap: 18px; color: #98a2b3; font-size: 11px; }
 .case-row-meta strong { color: #6b7b94; font-weight: 500; }
+.case-row-meta .text-link { font-size: 11px; }
 .case-row-progress { display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
 .case-stage-track { display: flex; width: 160px; gap: 5px; }
 .case-stage-track i { flex: 1; height: 4px; border-radius: 2px; background: #edf0f6; }
@@ -50,6 +51,16 @@
 .intake-compose-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid #f0f3f8; padding-top: 13px; }
 .intake-compose-footer > span { display: flex; align-items: center; gap: 6px; color: #a1acbd; font-size: 10px; }
 .intake-caption { text-align: center; color: #a4adbb; margin-top: 13px; font-size: 10px; line-height: 1.8; }
+.extract-box { border-top: 1px solid #f0f3f8; margin-top: 4px; padding-top: 13px; }
+.extract-title { display: flex; justify-content: space-between; align-items: center; color: #71809a; font-size: 10px; margin-bottom: 10px; }
+.extract-title span:last-child { color: #a7b0be; }
+.extract-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+.extract-tag { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #dbe4f8; background: #f5f8ff; color: #4a62a8; border-radius: 7px; padding: 5px 9px; font-size: 11px; line-height: 1.5; }
+.extract-tag:hover { border-color: #b6c8f4; background: #edf2ff; }
+.extract-tag span { color: #8c99b0; font-size: 10px; }
+.extract-tag strong { font-weight: 600; }
+.extract-missing { margin-top: 9px; color: #b07a20; font-size: 10px; line-height: 1.8; }
+.extract-ok { margin-top: 9px; color: #5c8a72; font-size: 10px; line-height: 1.8; }
 
 /* 案件内部只保留三栏：事实证据、对话操作、进度与建议。 */
 .case-workspace { max-width: 1840px; margin: auto; padding: 23px 27px 28px; }

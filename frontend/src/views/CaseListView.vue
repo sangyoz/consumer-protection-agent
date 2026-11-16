@@ -9,6 +9,10 @@ const search = ref('')
 const filter = ref('all')
 const openCount = computed(() => store.items.filter(c => c.stage !== 'resolved').length)
 const filtered = computed(() => store.items.filter(c => (filter.value === 'all' || (filter.value === 'resolved' ? c.stage === 'resolved' : c.stage !== 'resolved')) && `${c.title}${c.summary}`.includes(search.value.trim())))
+async function removeCase(item) {
+  if (!window.confirm(`确定删除案件「${item.title}」吗？案件信息、材料记录与沟通内容会一并删除，且不可恢复。`)) return
+  if (await store.remove(item.id)) store.notify('案件已删除')
+}
 onMounted(store.list)
 </script>
 
@@ -20,7 +24,7 @@ onMounted(store.list)
     <div v-if="store.error" class="error-banner" role="alert">{{ store.error }}<button class="text-link" @click="store.list">重新加载</button></div>
     <div v-if="store.busy" class="empty-state">正在加载案件…</div>
     <div v-else-if="!filtered.length" class="empty-state panel"><AppIcon name="file" :size="34" /><h2>{{ search || filter !== 'all' ? '没有符合条件的案件' : '从第一个案件开始' }}</h2><p>你可以调整筛选条件，或新建一个维权案件。</p><RouterLink to="/cases/new" class="btn btn-primary">新建案件</RouterLink></div>
-    <div v-else class="case-list-layout"><RouterLink v-for="item in filtered" :key="item.id" :to="`/cases/${item.id}/${item.stage === 'negotiating' ? 'negotiation' : item.stage === 'complaining' ? 'complaint' : 'analysis'}`" class="case-card panel"><span class="case-symbol"><AppIcon name="file" :size="22" /></span><div class="case-row-content"><h2>{{ item.title }}</h2><p class="case-excerpt">{{ item.summary }}</p><div class="case-row-meta"><span>{{ item.merchant || '商家信息待补充' }}</span><strong>{{ item.amount ? money(item.amount) : '金额待补充' }}</strong><span>{{ shortDate(item.updatedAt) }} 更新</span></div></div><div class="case-row-progress"><StatusBadge :stage="item.stage" /><div class="case-stage-track" aria-hidden="true"><i v-for="(_, index) in steps" :key="index" :class="{ reached: index <= stageStep[item.stage] }"></i></div><span class="text-link">继续处理<AppIcon name="arrow" :size="16" /></span></div></RouterLink><RouterLink to="/cases/new" class="new-case-row"><AppIcon name="plus" :size="19" />新建一个维权案件</RouterLink></div>
+    <div v-else class="case-list-layout"><RouterLink v-for="item in filtered" :key="item.id" :to="`/cases/${item.id}/${item.stage === 'negotiating' ? 'negotiation' : item.stage === 'complaining' ? 'complaint' : 'analysis'}`" class="case-card panel"><span class="case-symbol"><AppIcon name="file" :size="22" /></span><div class="case-row-content"><h2>{{ item.title }}</h2><p class="case-excerpt">{{ item.summary }}</p><div class="case-row-meta"><span>{{ item.merchant || '商家信息待补充' }}</span><strong>{{ item.amount ? money(item.amount) : '金额待补充' }}</strong><span>{{ shortDate(item.updatedAt) }} 更新</span><button type="button" class="text-link danger" @click.prevent.stop="removeCase(item)">删除</button></div></div><div class="case-row-progress"><StatusBadge :stage="item.stage" /><div class="case-stage-track" aria-hidden="true"><i v-for="(_, index) in steps" :key="index" :class="{ reached: index <= stageStep[item.stage] }"></i></div><span class="text-link">继续处理<AppIcon name="arrow" :size="16" /></span></div></RouterLink><RouterLink to="/cases/new" class="new-case-row"><AppIcon name="plus" :size="19" />新建一个维权案件</RouterLink></div>
     <div class="page-footnote"><AppIcon name="shield" :size="15" />目前为框架演示，分析结果及法律检索尚未接入真实 AI 服务。</div>
   </div>
 </template>

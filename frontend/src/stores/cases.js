@@ -23,6 +23,14 @@ export const useCasesStore = defineStore('cases', () => {
   async function list() { return run(async () => { items.value = await api.listCases(); return items.value }) }
   async function load(id) { current.value = null; return run(async () => replace(await api.getCase(id))) }
   async function create(input) { return run(async () => replace(await api.createCase(input))) }
+  async function remove(id) {
+    return run(async () => {
+      await api.deleteCase(id)
+      items.value = items.value.filter(c => c.id !== id)
+      if (current.value?.id === id) current.value = null
+      return true
+    })
+  }
   async function act(method, ...args) { return run(async () => replace(await api[method](...args))) }
-  return { items, current, busy, error, toast, notify, list, load, create, act }
+  return { items, current, busy, error, toast, notify, list, load, create, remove, act }
 })
