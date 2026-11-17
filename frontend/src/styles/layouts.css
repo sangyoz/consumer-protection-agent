@@ -6,7 +6,7 @@
 .focus-brand strong { font-size: 18px; letter-spacing: 1px; color: var(--ink); font-weight: 650; }
 .focus-home { margin-right: 7px; color: #8090a9; }
 .case-list-layout { display: grid; gap: 16px; }
-.case-list-layout .case-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) 190px; gap: 20px; min-height: 0; padding: 23px; align-items: start; }
+.case-list-layout .case-card { position: relative; overflow: hidden; display: grid; grid-template-columns: 44px minmax(0, 1fr) 190px; gap: 20px; min-height: 0; padding: 23px; align-items: start; }
 .case-row-content { min-width: 0; }
 .case-list-layout .case-excerpt { -webkit-line-clamp: 1; margin-bottom: 13px; }
 .case-list-layout .case-card h2 { margin-bottom: 7px; }
@@ -35,7 +35,7 @@
 .history-home { margin-top: auto; padding: 24px 10px 0; }
 .intake-main { min-width: 0; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 36px clamp(22px, 6vw, 104px) 22px; }
 .intake-welcome { margin: auto 0; padding: 50px 0 70px; text-align: center; }
-.intake-emblem { display: grid; place-items: center; width: 55px; height: 55px; background: var(--brand); color: #fff; border-radius: 4px; margin: 0 auto; font-family: var(--font-title); font-size: 25px; font-weight: 600; letter-spacing: 2px; }
+.intake-emblem { display: grid; place-items: center; width: 55px; height: 55px; background: #191919; color: #fff; border-radius: 4px; margin: 0 auto; font-family: var(--font-title); font-size: 25px; font-weight: 600; letter-spacing: 2px; }
 .intake-welcome .eyebrow { margin-bottom: 10px; }
 .intake-welcome h1 { font-size: 30px; }
 .intake-welcome > p { font-size: 13px; color: #8c99ae; margin-top: 13px; line-height: 1.9; }
@@ -90,13 +90,15 @@
 .negotiation-chat .chat-compose textarea { font-size: 13px; }
 .workspace-right { display: flex; flex-direction: column; padding: 18px; min-height: 0; height: 100%; overflow: hidden; }
 .workspace-right > .panel-title { margin-bottom: 12px; flex: 0 0 auto; }
-.compact-progress { list-style: none; padding: 0 0 15px; margin: 0 0 16px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; flex: 0 0 auto; }
-.compact-progress li { display: flex; align-items: center; flex-direction: column; gap: 9px; position: relative; font-size: 9px; color: #a0aabe; }
-.compact-progress li:not(:last-child)::after { content: ''; position: absolute; height: 1px; background: #e7ecf5; top: 11px; left: calc(50% + 16px); right: calc(-50% + 15px); }
-.compact-step { display: grid; place-items: center; height: 23px; width: 23px; border-radius: 50%; background: #f0f3f8; font-size: 10px; }
-.compact-progress .done { color: #759184; }
-.compact-progress .done .compact-step { background: #edf7f2; color: #469476; }
-.compact-progress .current { color: var(--brand-ink); }
+/* 处理进度：竖版步骤列表，圆点左侧、名称一行一个，段间用细竖线连接 */
+.workspace-right:has(.right-advice) .compact-progress { flex: 0 0 auto; min-height: 0; height: 252px; }
+.compact-progress { list-style: none; padding: 0 0 18px; margin: 0 0 18px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 0; flex: 0 1 440px; min-height: 300px; }
+.compact-progress li { flex: 1 1 0; display: flex; flex-direction: row; align-items: center; gap: 13px; position: relative; font-size: 13px; color: #9a9a9a; }
+.compact-progress li:not(:last-child)::after { content: ''; position: absolute; width: 1px; height: 100%; background: #e2e2e2; top: 50%; left: 13px; }
+.compact-step { position: relative; z-index: 1; display: grid; place-items: center; height: 27px; width: 27px; border-radius: 50%; background: #ededed; font-size: 12px; color: #8c8c8c; }
+.compact-progress .done { color: #5f5f5f; }
+.compact-progress .done .compact-step { background: #e7f6ed; color: #0a8a47; }
+.compact-progress .current { color: var(--brand-ink); font-weight: 600; }
 .compact-progress .current .compact-step { color: #fff; background: var(--brand); box-shadow: 0 0 0 4px #f0f0f0; }
 .workspace-right-body { flex: 1; min-height: 0; overflow-y: auto; }
 .right-advice .panel-title h2 { font-size: 14px; }
@@ -158,7 +160,7 @@
   .intake-welcome { padding: 32px 0; }
   .intake-welcome h1 { font-size: 24px; }
   .intake-welcome > p { font-size: 12px; }
-  .intake-emblem { display: grid; place-items: center; width: 55px; height: 55px; background: var(--brand); color: #fff; border-radius: 4px; margin: 0 auto; font-family: var(--font-title); font-size: 25px; font-weight: 600; letter-spacing: 2px; }
+  .intake-emblem { display: grid; place-items: center; width: 55px; height: 55px; background: #191919; color: #fff; border-radius: 4px; margin: 0 auto; font-family: var(--font-title); font-size: 25px; font-weight: 600; letter-spacing: 2px; }
   .intake-welcome .example-list { gap: 7px; }
   .example-chip { font-size: 10px; }
   .intake-composer { padding: 16px; }
