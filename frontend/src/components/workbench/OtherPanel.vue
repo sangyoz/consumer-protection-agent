@@ -1,40 +1,27 @@
 <script setup>
-import { computed } from 'vue'
-import { CHANNELS, MATERIAL_KINDS } from '../../domain/case'
-import AppIcon from '../AppIcon.vue'
-
+import { computed, ref } from 'vue'
+import { useCasesStore } from '../../stores/cases'
+import ProgressRecordForm from './ProgressRecordForm.vue'
 const props = defineProps({ item: Object })
-const uploaded = computed(() => new Set(props.item.materials.map(m => m.kind)))
-
-function missingFor(channel) {
-  return channel.materials.filter(kind => !uploaded.value.has(kind))
+const store = useCasesStore()
+const attempts = computed(() => (props.item.plan?.steps || []).filter(row => ['completed', 'failed', 'skipped'].includes(row.status)))
+const alternatives = computed(() => props.item.plan?.alternatives || [])
+const selectedChannel = ref('')
+async function refresh() {
+  if (await store.act('replan', props.item.id)) store.notify('已结合已有尝试重新评估')
 }
 </script>
 
 <template>
   <section class="panel content-panel">
-    <div class="panel-title"><h2>其他解决方案</h2><span class="subtle-tag">渠道对照</span></div>
-    <p class="body-copy muted">列出常见维权渠道及其受理范围、所需材料；是否适用需结合案情判断，本页不自动推荐渠道。</p>
-
-    <div class="channel-grid">
-      <article v-for="channel in CHANNELS" :key="channel.key" class="channel-card">
-        <div class="channel-card-head">
-          <h3>{{ channel.name }}</h3>
-          <em class="tag tag-muted">{{ channel.category }}</em>
-        </div>
-        <p>{{ channel.scope }}</p>
-        <div class="channel-materials">
-          <span class="field-caption">通常需要的材料</span>
-          <span class="material-tags">
-            <em v-for="kind in channel.materials" :key="kind" class="tag" :class="{ 'tag-warn': !uploaded.has(kind) }">{{ MATERIAL_KINDS[kind] }}</em>
-          </span>
-          <small v-if="missingFor(channel).length" class="small muted">尚缺：{{ missingFor(channel).map(k => MATERIAL_KINDS[k]).join('、') }}</small>
-          <small v-else class="small muted gap-ok">所需材料已具备</small>
-        </div>
-      </article>
-    </div>
-
-    <div class="notice-box"><strong>渠道选择说明</strong><p>以上为静态渠道清单；结合纠纷类型、金额和证据情况给出的推荐顺序，后续由 Agent 模块补充。</p></div>
-    <RouterLink :to="{ path: '/follow-up', query: { case: item.id } }" class="btn btn-primary">记录新的处理反馈<AppIcon name="arrow" :size="16" /></RouterLink>
+    <div class="panel-title"><h2>其他维权方式</h2><span class="subtle-tag">结合本案重新评估</span></div>
+    <p class="body-copy muted">如果前面的方式没有解决问题，补充失败原因和新反馈后，再判断还有哪些办法可尝试。案件已解决时无需执行本步骤。</p>
+    <div class="fact-block plan-step-body"><span class="field-caption">已有处理记录</span><ul v-if="attempts.length" class="checklist"><li v-for="step in attempts" :key="step.id">{{ step.title }}：{{ step.note || '已记录结果' }}</li></ul><p v-else class="small muted">还没有记录步骤结果。可在本页下方补充已尝试的方式，或返回对应步骤记录结果。</p></div>
+    <button class="btn btn-primary" :disabled="store.busy || item.stage === 'resolved'" @click="refresh">{{ store.busy ? '正在评估…' : '重新评估剩余办法' }}</button>
+    <div v-if="alternatives.length" class="channel-grid plan-step-body"><article v-for="entry in alternatives" :key="entry.channel" class="channel-card"><h3>{{ entry.title }}</h3><p>{{ entry.reason }}</p><div class="notice-box"><strong>先核对适用条件</strong><p>{{ entry.conditions }}</p></div><p class="small muted">准备材料：{{ entry.materials.join('、') }}</p><button class="btn btn-secondary" :disabled="store.busy || item.stage === 'resolved'" @click="selectedChannel = entry.channel">{{ selectedChannel === entry.channel ? '已选中，在下方记录反馈' : '记录此渠道的反馈' }}</button></article></div>
+    <div v-else class="inline-empty"><p>{{ item.plan?.engine === 'rules' ? '当前为规则初步规划，尚无针对本案的 AI 替代路径评估。' : '当前没有足够依据推荐新的渠道，请补充已尝试的方式、失败原因和经营主体信息。' }}</p></div>
+    <p class="fine-print">以上为待核对的路径建议，不代表一定受理或成功；涉及仲裁、诉讼时应进一步核对管辖、期限、费用与证据条件。</p>
+    <RouterLink :to="{ path: '/follow-up', query: { case: item.id } }" class="text-link">补充处理反馈或确认结案</RouterLink>
+    <ProgressRecordForm :item="item" :channel="selectedChannel" title="补充已尝试方式与失败原因" />
   </section>
 </template>

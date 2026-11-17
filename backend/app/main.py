@@ -13,8 +13,8 @@ from sqlalchemy.orm import Session
 
 from .database import BACKEND_DIR, Base, CaseRecord, engine, get_session
 from .agents import workflow as agent_workflow
-from .schemas import CaseInput, CaseUpdate, EvidenceInput, ExtractInput, MaterialKindInput, MessageInput, ProgressInput
-from .services import agent, complaint, extract as extractor, retrieval, rules
+from .schemas import CaseInput, CaseUpdate, EvidenceInput, ExtractInput, MaterialKindInput, MessageInput, ProgressInput, StepFeedback
+from .services import agent, complaint, extract as extractor, retrieval, rules, planning
 
 UPLOAD_DIR = BACKEND_DIR / 'uploads'
 MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -97,6 +97,7 @@ def _default_title(input: CaseInput) -> str:
 def create_case(input: CaseInput, session: Session = Depends(get_session)):
     case_id, created_at = str(uuid4()), now()
     case = {'id': case_id, 'title': input.title.strip() or _default_title(input), 'summary': input.summary, 'merchant': input.merchant.strip(), 'amount': input.amount, 'goal': input.goal.strip() or '希望协助梳理合理诉求', 'tradeTime': input.tradeTime.strip(), 'platform': input.platform.strip(), 'product': input.product.strip(), 'payee': input.payee.strip(), 'creditCode': input.creditCode, 'stage': 'collecting', 'createdAt': created_at, 'updatedAt': created_at, 'analysis': None, 'messages': [], 'materials': [], 'complaint': '', 'complaintAttachments': [], 'goalPlan': None, 'resolution': None, 'followups': [], 'timeline': [{'id': str(uuid4()), 'text': '案件已创建，等待补充信息', 'createdAt': created_at}]}
+    planning.refresh(case, 'initial')
     session.add(CaseRecord(id=case_id, payload=case))
     session.commit()
     return case
@@ -104,7 +105,11 @@ def create_case(input: CaseInput, session: Session = Depends(get_session)):
 
 @app.get('/api/cases/{case_id}')
 def read_case(case_id: str, session: Session = Depends(get_session)):
-    return get_case(case_id, session)[1]
+    record, case = get_case(case_id, session)
+    if not case.get('plan') and case.get('stage') != 'resolved':
+        planning.refresh(case, 'legacy_case')
+        return save(record, case, session)
+    return case
 
 
 @app.delete('/api/cases/{case_id}')
@@ -130,6 +135,8 @@ def update_case(case_id: str, input: CaseUpdate, session: Session = Depends(get_
         case[name] = value.strip() if isinstance(value, str) else value
     if not case['title']:
         case['title'] = case['summary'][:24]
+    if any(key in updates for key in ('summary', 'merchant', 'goal', 'platform', 'amount', 'product', 'goalPlan', 'payee', 'creditCode')):
+        planning.refresh(case, 'facts_updated')
     record_event(case, '已更新案件基本信息')
     return save(record, case, session)
 
@@ -155,7 +162,9 @@ def send_message(case_id: str, input: MessageInput, session: Session = Depends(g
     response_text = result['reply']
     case['messages'].append({'id': str(uuid4()), 'role': 'merchant', 'content': input.content, 'createdAt': created_at})
     case['messages'].append({'id': str(uuid4()), 'role': 'assistant', 'content': response_text, 'createdAt': created_at})
-    case['stage'] = 'negotiating'
+    case['stage'] = 'negotiating'
+
+    planning.refresh(case, 'merchant_reply')
     record_event(case, '已记录商家回复并生成沟通建议')
     return save(record, case, session)
 
@@ -182,6 +191,7 @@ def update_evidence(case_id: str, input: EvidenceInput, session: Session = Depen
     entries = {row['key']: row for row in evidence.assess(case)}
     entries[input.key].update(status=input.status, note=input.note, content_verified=False)
     case['evidence_checklist'] = list(entries.values())
+    planning.refresh(case, 'evidence_updated')
     record_event(case, '已更新证据状态')
     return save(record, case, session)
 
@@ -215,6 +225,7 @@ async def upload_materials(case_id: str, files: list[UploadFile] = File(...), se
             target.write_bytes(content)
             written.append(target)
             case['materials'].append(material)
+        planning.refresh(case, 'materials_updated')
         record_event(case, '附件已保存')
         return save(record, case, session)
     except Exception:
@@ -257,6 +268,7 @@ def delete_material(case_id: str, material_id: str, session: Session = Depends(g
     if storage_name:
         (UPLOAD_DIR / Path(storage_name).name).unlink(missing_ok=True)
     record_event(case, f'已删除材料 {material["name"]}')
+    planning.refresh(case, 'materials_updated')
     return save(record, case, session)
 
 
@@ -266,6 +278,7 @@ def update_material_kind(case_id: str, material_id: str, input: MaterialKindInpu
     ensure_open(case)
     material = find_material(case, material_id)
     material['kind'] = input.kind
+    planning.refresh(case, 'materials_updated')
     record_event(case, f'已更新材料「{material["name"]}」的类型')
     return save(record, case, session)
 
@@ -297,5 +310,37 @@ def update_progress(case_id: str, input: ProgressInput, session: Session = Depen
         detail += f'（渠道：{followup["channel"]}）'
     if followup['caseNo']:
         detail += f'（编号：{followup["caseNo"]}）'
+    planning.refresh(case, 'progress_feedback')
     record_event(case, detail)
+    return save(record, case, session)
+
+
+@app.post('/api/cases/{case_id}/plan')
+def replan_case(case_id: str, session: Session = Depends(get_session)):
+    record, case = get_case(case_id, session)
+    ensure_open(case)
+    planning.refresh(case, 'manual')
+    record_event(case, '已结合当前事实重新规划处理路径')
+    return save(record, case, session)
+
+
+@app.post('/api/cases/{case_id}/steps/{step_id}/feedback')
+def step_feedback(case_id: str, step_id: str, input: StepFeedback, session: Session = Depends(get_session)):
+    record, case = get_case(case_id, session)
+    ensure_open(case)
+    step = next((row for row in (case.get('plan') or {}).get('steps', []) if row['id'] == step_id), None)
+    if not step:
+        raise HTTPException(404, '该步骤不在当前案件计划中')
+    if step['type'] == 'other':
+        raise HTTPException(400, '其他维权方式保留为末尾入口，请重新评估路径或在处理跟进中结案')
+    if step['status'] in planning.TERMINAL:
+        raise HTTPException(409, '该步骤已记录结果；新情况请通过处理跟进补充')
+    previous = copy.deepcopy(case['plan'])
+    step.update(status=input.status, note=input.note, feedback_at=now())
+    case.setdefault('followups', []).append({'id': str(uuid4()), 'step_id': step_id,
+        'note': input.note, 'status': input.status, 'createdAt': now()})
+    planning.refresh(case, 'step_' + input.status)
+    # Keep exactly one pre-feedback snapshot for each plan version.
+    case['plan_history'][-1] = previous
+    record_event(case, f'已记录步骤「{step["title"]}」结果：{input.note}')
     return save(record, case, session)

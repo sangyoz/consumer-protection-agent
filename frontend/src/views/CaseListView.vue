@@ -1,7 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useCasesStore } from '../stores/cases'
-import { money, shortDate, stageStep, steps } from '../domain/case'
+import { money, shortDate } from '../domain/case'
+import { caseSteps } from '../domain/plan'
 import StatusBadge from '../components/StatusBadge.vue'
 import AppIcon from '../components/AppIcon.vue'
 const store = useCasesStore()
@@ -23,7 +24,7 @@ onMounted(store.list)
     <div v-if="store.error" class="error-banner" role="alert">{{ store.error }}<button class="text-link" @click="store.list">重新加载</button></div>
     <div v-if="store.busy" class="empty-state">正在加载案件…</div>
     <div v-else-if="!filtered.length" class="empty-state panel"><AppIcon name="file" :size="34" /><h2>{{ search || filter !== 'all' ? '没有符合条件的案件' : '从第一个案件开始' }}</h2><p>你可以调整筛选条件，或新建一个维权案件。</p><RouterLink to="/cases/new" class="btn btn-primary">新建案件</RouterLink></div>
-    <div v-else class="case-list-layout"><RouterLink v-for="item in filtered" :key="item.id" :to="`/cases/${item.id}/${item.stage === 'negotiating' ? 'negotiation' : item.stage === 'complaining' ? 'complaint' : 'analysis'}`" class="case-card panel"><span class="case-symbol"><AppIcon name="file" :size="22" /></span><div class="case-row-content"><h2>{{ item.title }}</h2><p class="case-excerpt">{{ item.summary }}</p><div class="case-row-meta"><span>{{ item.merchant || '商家信息待补充' }}</span><strong>{{ item.amount ? money(item.amount) : '金额待补充' }}</strong><span>{{ shortDate(item.updatedAt) }} 更新</span><button type="button" class="text-link danger" @click.prevent.stop="removeCase(item)">删除</button></div></div><div class="case-row-progress"><StatusBadge :stage="item.stage" /><div class="case-stage-track" aria-hidden="true"><i v-for="(_, index) in steps" :key="index" :class="{ reached: index <= stageStep[item.stage] }"></i></div><span class="text-link">继续处理<AppIcon name="arrow" :size="16" /></span></div></RouterLink></div>
+    <div v-else class="case-list-layout"><RouterLink v-for="item in filtered" :key="item.id" :to="`/cases/${item.id}`" class="case-card panel"><span class="case-symbol"><AppIcon name="file" :size="22" /></span><div class="case-row-content"><h2>{{ item.title }}</h2><p class="case-excerpt">{{ item.summary }}</p><div class="case-row-meta"><span>{{ item.merchant || '商家信息待补充' }}</span><strong>{{ item.amount ? money(item.amount) : '金额待补充' }}</strong><span>{{ shortDate(item.updatedAt) }} 更新</span><button type="button" class="text-link danger" @click.prevent.stop="removeCase(item)">删除</button></div></div><div class="case-row-progress"><StatusBadge :stage="item.stage" /><div class="case-stage-track" aria-hidden="true"><i v-for="step in caseSteps(item)" :key="step.id" :class="{ reached: step.status === 'completed' || step.status === 'active' }"></i></div><span class="text-link">继续处理<AppIcon name="arrow" :size="16" /></span></div></RouterLink></div>
     <div class="page-footnote"><AppIcon name="shield" :size="15" />分析结果基于案件信息生成，请结合实际情况核对后使用。</div>
   </div>
 </template>

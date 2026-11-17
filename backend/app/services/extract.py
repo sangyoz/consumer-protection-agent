@@ -94,12 +94,13 @@ def extract_product(text):
             continue
         start = index + len(verb)
         head = re.split(r'[，,。；;！!？?\n]', text[start:start + 40].lstrip('，,。；、 了的'))[0]
-        head = re.sub(r'^[了]?(?:一|两|三|几|半)?[个台部双件张只瓶盒套份]?', '', head)
-        # 商品名后面常跟金额（「无线耳机399元」），先截掉，避免金额混进商品名。
-        amount_hit = PRODUCT_AMOUNT.search(head)
-        if amount_hit:
-            head = head[amount_hit.end():] if amount_hit.start() == 0 else head[:amount_hit.start()]
-            head = re.sub(r'^的', '', head)
+        # Prices and quantities can appear in either order: 一副299元的 / 299元的一副.
+        for _ in range(3):
+            head = re.sub(r'^(?:[一二三四五六七八九十百两几半\d]+)?[个台部双件张只瓶盒套份副本辆节次]\s*', '', head)
+            amount_hit = PRODUCT_AMOUNT.search(head)
+            if amount_hit:
+                head = head[amount_hit.end():] if amount_hit.start() == 0 else head[:amount_hit.start()]
+            head = re.sub(r'^[的\s]+', '', head)
         for noise in PRODUCT_NOISE:
             if noise in head:
                 head = head.split(noise)[0]
@@ -136,7 +137,17 @@ def extract_merchant(text):
             return name, start, start + len(name)
     for match in re.finditer(r'([\u4e00-\u9fa5A-Za-z0-9]{2,20}(?:' + '|'.join(MERCHANT_SUFFIXES) + '))', text):
         name = match.group(1)
-        name = re.sub(r'^(?:这家|那家|该|这个|那个|一家|在|于|从)', '', name)
+        # An unnamed “一家耳机店” is a category, not a merchant identity.
+        if re.search(r'(?:一家|某家|某个|某|一个)', name):
+            continue
+        name = re.sub(r'^(?:(?:我|本人)(?:之前|曾经)?(?:在|从|于)|在|于|从)', '', name)
+        for platform in PLATFORMS:
+            if name.startswith(platform):
+                name = name[len(platform):].lstrip('上的')
+                break
+        name = re.sub(r'^(?:这家|那家|该|这个|那个)', '', name)
+        if name.startswith(('我', '你', '他', '她', '它', '线上', '线下')):
+            continue
         if len(name) < 3 or name in MERCHANT_STOP:
             continue
         if name.startswith(MERCHANT_VERB_PREFIX):

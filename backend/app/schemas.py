@@ -108,6 +108,18 @@ class MaterialKindInput(BaseModel):
     kind: MaterialKind
 
 
+class StepFeedback(BaseModel):
+    status: Literal['completed', 'failed', 'skipped']
+    note: str = Field(min_length=1, max_length=2000)
+
+    @field_validator('note')
+    @classmethod
+    def nonempty(cls, value):
+        if not value.strip():
+            raise ValueError('请记录实际结果')
+        return value.strip()
+
+
 class ExtractInput(BaseModel):
     """从一段自由描述中按规则抽取案件字段，不做推断。"""
 

@@ -9,7 +9,7 @@ flowchart TD
 
     subgraph D["动态决策：LangGraph 条件边与工具循环"]
         S --> E["证据盘点<br/>区分缺失、已上传未核验、用户自述"]
-        E --> P["DeepSeek 决策 + Pydantic 校验<br/>输出 action / tools / query"]
+        E --> P["DeepSeek 决策 + Pydantic 校验<br/>输出 action / tools / 不确定点 / 待问问题"]
         P --> R{"需要检索且未超过工具预算？"}
         R -->|"是：按需选择工具"| T["受控工具调度<br/>最多 2 轮，同一检索器每次运行最多调用 1 次"]
         T --> L["本地法律检索<br/>SQLite：1,412 条 · BM25 已启用"]
@@ -20,12 +20,14 @@ flowchart TD
         W -.-> O
         O -->|"更新状态，再次决策"| P
         R -->|"不需要或已达预算"| A{"策略条件路由"}
+        A --> CL["先向用户澄清<br/>关键事实不足或相互矛盾"]
         A --> C["补充证据"]
         A --> N["继续协商"]
         A --> X["升级处理建议"]
         A --> Q["投诉草稿<br/>仅限用户主动请求"]
     end
 
+    CL --> G
     C --> G
     N --> G
     X --> G
@@ -51,7 +53,7 @@ flowchart TD
     classDef guard fill:#fff4df,stroke:#bd862a,color:#6b4a14;
     classDef fallback fill:#fcecec,stroke:#ba5555,color:#7b3030;
     classDef optional fill:#f6f7f9,stroke:#9299a7,color:#596170,stroke-dasharray:5 5;
-    class S,E,P,R,T,A,C,N,X,Q decision;
+    class S,E,P,R,T,A,CL,C,N,X,Q decision;
     class L,O retrieval;
     class G,K,K0,F,Z guard;
     class B fallback;
@@ -61,7 +63,9 @@ flowchart TD
 ## 动态决策
 
 - 决策依据包含案情、最近对话、上一轮策略、证据状态及本轮工具观测；模型选择动作和检索工具，由代码约束合法值。
-- 核心交易或付款证据不足时优先补证；投诉文书只在用户主动请求投诉草稿时生成。
+- 决策返回简短理由、把握程度、不确定点及最多三个关键追问；关键事实不足且无法安全给条件性建议时进入澄清节点。
+- 初次分析缺少交易或付款凭证时优先补证；收到商家新回复时保留对商家主张的回应，证据缺口作为并行提醒。投诉草稿只在用户主动请求时生成。
+- Agent 只可从澄清、补证、协商、升级建议和投诉草稿中选择；工具限本地法条库与可选博查。代码继续约束强制核法条场景、调用预算和投诉授权。
 - 检索后进入 decide 节点再次判断。工具轮次最多两轮，每个检索器同次工作流只调用一次；引用自修正最多一次。
 - 案件层持久化部分状态和 trace，并在后续请求中重建 AgentState；当前未使用 LangGraph checkpointer，不等于图内断点续跑。
 
@@ -88,3 +92,30 @@ flowchart TD
 - backend/app/services/retrieval.py：BM25、向量融合、案例白名单和引用核对。
 - backend/app/services/evidence.py：证据状态盘点。
 - backend/app/main.py：接口与案件状态持久化。
+
+
+## 案件级规划与页面流程
+
+新增 `backend/app/services/planning.py`，以 LangGraph 的 propose_plan → validate_plan 生成案件级计划。规划器读取案件事实、证据盘点、最近商家消息、跟进和上一版计划；模型只可从 10 种预设模块中选择和排序。校验器限制类型、去重、保留已完成/失败/不适用记录、强制“其他维权方式”末尾，并排除已失败的对应渠道。规划文案不引用法律条文，发现未经本次检索支持的法条引用时回退规则。
+
+案件级规划决定“展示哪些步骤”；原有 `agents/workflow.py` 继续负责每轮分析、工具调用、基于检索的生成、引用审计和条件边修正。单轮 Agent 上下文包含当前计划和近期跟进，两者共享案件数据。页面切换不自动完成步骤；用户反馈才改变结果状态。原有引文校验只校验来源与原文匹配，不能证明法律适用或结论正确。
+
+前端 `domain/plan.js` 定义组件目录与演示回退；WorkbenchView 按计划渲染导航，PlanStepPanel 提供主体核对、证据、金额核算、平台介入、主管渠道及跟进模块，沿用现有绿色按钮、白色卡片和三栏布局。OtherPanel 根据本案历史展示剩余办法、待核对条件与材料，随重规划更新。
+
+```mermaid
+flowchart TD
+  A[首次描述 / 新事实 / 处理反馈] --> B[案件级 LangGraph 规划]
+  B --> C[模型选择预设模块及顺序]
+  C --> D[代码校验：白名单、去重、保留历史、其他永远末尾]
+  D --> E[保存带版本的案件计划]
+  E --> F[前端渲染本案专属导航及页面]
+  F --> G[用户记录完成、未解决或不适用]
+  G --> B
+  F --> H[本轮 Agent：分析 / 协商 / 投诉草稿]
+  H --> I[法律与案例检索 → 生成 → 引用审计]
+  I --> J{校验通过?}
+  J -->|否| K[反馈错误并修正，次数受限]
+  K --> I
+  J -->|是| L[附来源的建议]
+  E --> M[其他维权方式：结合失败记录评估剩余渠道]
+```

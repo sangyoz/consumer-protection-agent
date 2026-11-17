@@ -56,6 +56,26 @@ class ApiFlowTests(unittest.TestCase):
         fallback = self.client.post('/api/cases', json={'summary': '商家一直推脱，希望帮忙看看怎么维权。', 'goal': '', 'product': ''}).json()
         self.assertEqual(fallback['title'], '商家一直推脱，希望帮忙看看怎么维权。')
 
+    def test_case_plan_feedback_replans_and_keeps_failed_result(self):
+        case_id = self.create_case()
+        case = self.client.get(f'/api/cases/{case_id}').json()
+        self.assertEqual(case['plan']['steps'][-1]['type'], 'other')
+        current = case['plan']['current_step_id']
+        self.assertEqual(self.client.post(f'/api/cases/{case_id}/steps/{current}/feedback',
+                         json={'status': 'failed', 'note': '  '}).status_code, 422)
+        response = self.client.post(f'/api/cases/{case_id}/steps/{current}/feedback',
+                         json={'status': 'failed', 'note': '找不到原始订单，请求其他办法'})
+        self.assertEqual(response.status_code, 200, response.text)
+        case = response.json()
+        self.assertEqual(next(s for s in case['plan']['steps'] if s['id'] == current)['status'], 'failed')
+        self.assertNotEqual(case['plan']['current_step_id'], current)
+        self.assertEqual(case['plan']['version'], 2)
+        self.assertEqual(self.client.post(f'/api/cases/{case_id}/steps/{current}/feedback',
+                         json={'status': 'completed', 'note': '覆盖历史'}).status_code, 409)
+        self.assertEqual(self.client.post(f'/api/cases/{case_id}/steps/other/feedback',
+                         json={'status': 'failed', 'note': '无果'}).status_code, 400)
+        self.assertEqual(self.client.post(f'/api/cases/{case_id}/plan').json()['plan']['version'], 3)
+
     def test_complete_case_flow_and_confirmation(self):
         case_id = self.create_case()
         self.assertEqual(len(self.client.get('/api/cases').json()), 1)

@@ -1,8 +1,10 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useCasesStore } from '../stores/cases'
-import { money, sections, steps, stageStep } from '../domain/case'
+import { money } from '../domain/case'
+import { caseSteps, STEP_STATUS } from '../domain/plan'
+import { dataMode } from '../api'
 import AppIcon from '../components/AppIcon.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import AnalysisPanel from '../components/workbench/AnalysisPanel.vue'
@@ -11,14 +13,29 @@ import NegotiationAdvice from '../components/workbench/NegotiationAdvice.vue'
 import ComplaintPanel from '../components/workbench/ComplaintPanel.vue'
 import OtherPanel from '../components/workbench/OtherPanel.vue'
 import MaterialList from '../components/workbench/MaterialList.vue'
+import PlanStepPanel from '../components/workbench/PlanStepPanel.vue'
+import StepOutcome from '../components/workbench/StepOutcome.vue'
 
 const route = useRoute()
+const router = useRouter()
 const store = useCasesStore()
 const leftOpen = ref(true)
 const rightOpen = ref(true)
 const item = computed(() => store.current)
-const activeIndex = computed(() => sections.findIndex(s => s.key === route.params.section))
-const panel = computed(() => ({ analysis: AnalysisPanel, negotiation: NegotiationPanel, complaint: ComplaintPanel, other: OtherPanel })[route.params.section])
+const sections = computed(() => caseSteps(item.value))
+const activeIndex = computed(() => sections.value.findIndex(s => s.key === route.params.section))
+const currentStep = computed(() => sections.value[activeIndex.value] || sections.value[0])
+watch([item, () => route.params.section], ([value, section]) => {
+  if (!value || value.id !== route.params.id) return
+  if (!sections.value.some(row => row.key === section)) {
+    const id = value.plan?.current_step_id || sections.value[0]?.key
+    if (id) router.replace(`/cases/${value.id}/${id}`)
+  }
+}, { immediate: true })
+async function replan() {
+  if (await store.act('replan', item.value.id)) store.notify('已结合当前情况重新规划')
+}
+const panel = computed(() => ({ analysis: AnalysisPanel, negotiation: NegotiationPanel, complaint: ComplaintPanel, other: OtherPanel })[route.params.section] || PlanStepPanel)
 watch(() => route.params.id, id => store.load(id), { immediate: true })
 
 const editing = ref(false)
@@ -52,7 +69,7 @@ async function upload(event) {
   if (!files.length) return
   const allowed = /\.(pdf|docx|png|jpe?g|txt)$/i
   if (files.length > 5 || files.some(f => f.size > 10 * 1024 * 1024 || !allowed.test(f.name))) { store.notify('每次最多 5 份，单份不超过 10 MB，支持 PDF、DOCX、图片和 TXT'); return }
-  if (await store.act('addMaterials', item.value.id, files)) store.notify('附件已添加')
+  if (await store.act('addMaterials', item.value.id, files)) store.notify(dataMode === 'mock' ? '已记录文件名；演示模式不保存文件内容' : '附件已保存')
 }
 </script>
 
@@ -100,15 +117,25 @@ async function upload(event) {
           <header class="workspace-heading"><div><span class="eyebrow">当前案件</span><h1>{{ item.title }}</h1></div><StatusBadge :stage="item.stage" /></header>
           <div class="workbench-toolbar"><nav class="workbench-tabs" aria-label="案件阶段"><RouterLink v-for="(section, index) in sections" :key="section.key" :to="`/cases/${item.id}/${section.key}`" :class="{ active: section.key === route.params.section }"><span>{{ String(index + 1).padStart(2, '0') }}</span>{{ section.label }}</RouterLink></nav><div class="fold-buttons"><button class="icon-btn" :aria-pressed="leftOpen" :aria-label="leftOpen ? '收起案件信息' : '展开案件信息'" @click="leftOpen = !leftOpen"><AppIcon name="file" :size="17" /></button><button class="icon-btn" :aria-pressed="rightOpen" :aria-label="rightOpen ? '收起处理进度' : '展开处理进度'" @click="rightOpen = !rightOpen"><AppIcon name="clock" :size="17" /></button></div></div>
           <div v-if="item.stage === 'resolved'" class="notice-box resolved-notice">本案已确认解决。历史材料与沟通记录可继续查看；如有新问题，可在“处理跟进”中记录并重新进入处理阶段。</div>
-          <component :is="panel" :item="item" :key="item.id + route.params.section" />
+          <component :is="panel" :item="item" :step="currentStep" :key="item.id + route.params.section"><StepOutcome :item="item" :step="currentStep" /></component>
         </div>
         <aside v-if="rightOpen" class="panel workspace-right">
           <div class="panel-title"><h2>处理进度</h2><button class="icon-btn" aria-label="收起处理进度" @click="rightOpen = false"><AppIcon name="close" :size="15" /></button></div>
-          <ol class="compact-progress"><li v-for="(step, index) in steps" :key="step" :class="{ done: index < stageStep[item.stage], current: index === stageStep[item.stage] }"><span class="compact-step"><AppIcon v-if="index < stageStep[item.stage]" name="check" :size="12" /><span v-else>{{ index + 1 }}</span></span><span>{{ step }}</span></li></ol>
+          <ol class="case-plan-progress" aria-label="本案处理进度">
+            <li v-for="(step, index) in sections" :key="step.id" :class="{ done: step.status === 'completed', current: step.status === 'active' }">
+              <RouterLink :to="`/cases/${item.id}/${step.key}`" :aria-current="step.status === 'active' ? 'step' : undefined">
+                <span class="compact-step" aria-hidden="true"><AppIcon v-if="step.status === 'completed'" name="check" :size="13" /><template v-else>{{ index + 1 }}</template></span>
+                <span class="case-plan-label">{{ step.label }}</span><small>{{ STEP_STATUS[step.status] }}</small>
+              </RouterLink>
+            </li>
+          </ol>
           <div class="workspace-right-body">
             <NegotiationAdvice v-if="route.params.section === 'negotiation'" :item="item" :key="item.id" />
+            <section class="plan-feedback"><div class="panel-title"><h3>本案处理路径</h3><span class="small muted">第 {{ item.plan?.version || 1 }} 版 · {{ item.plan?.engine === 'deepseek' ? 'AI 规划' : '规则初步规划' }}</span></div><p class="small muted">{{ item.plan?.reason }}</p><button class="text-link" :disabled="store.busy || item.stage === 'resolved'" @click="replan">重新评估后续步骤</button>
+              <details v-if="item.plan_history?.length" class="audit-trace"><summary>路径调整记录</summary><p v-for="plan in [...item.plan_history].reverse()" :key="plan.version + plan.updated_at">第 {{ plan.version }} 版：{{ plan.steps.map(row => row.title).join(' → ') }}<br />{{ plan.reason }}</p></details>
+            </section>
           </div>
-          <footer class="workspace-right-footer"><div class="step-actions"><RouterLink v-if="activeIndex > 0" :to="`/cases/${item.id}/${sections[activeIndex - 1].key}`" class="btn btn-secondary">上一步</RouterLink><RouterLink v-if="activeIndex < sections.length - 1" :to="`/cases/${item.id}/${sections[activeIndex + 1].key}`" class="btn btn-primary">下一步<AppIcon name="arrow" :size="14" /></RouterLink></div><RouterLink :to="{ path: '/follow-up', query: { case: item.id } }" class="text-link progress-link">记录处理进度<AppIcon name="arrow" :size="15" /></RouterLink></footer>
+          <footer class="workspace-right-footer"><div class="step-actions"><RouterLink v-if="activeIndex > 0" :to="`/cases/${item.id}/${sections[activeIndex - 1].key}`" class="btn btn-secondary">查看上一步</RouterLink><RouterLink v-if="activeIndex < sections.length - 1" :to="`/cases/${item.id}/${sections[activeIndex + 1].key}`" class="btn btn-primary">查看下一步<AppIcon name="arrow" :size="14" /></RouterLink></div><RouterLink :to="{ path: '/follow-up', query: { case: item.id } }" class="text-link progress-link">记录处理进度<AppIcon name="arrow" :size="15" /></RouterLink></footer>
         </aside>
       </div>
     </template>

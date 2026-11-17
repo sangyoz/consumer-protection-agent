@@ -63,11 +63,19 @@ def retrieve_context(state: AgentState) -> dict:
             'tool_rounds': state['tool_rounds'] + 1, 'trace': state['trace'] + ['retrieve_context']}
 
 
-def draft(state: AgentState) -> dict:
+def draft(state: AgentState, action: str | None = None) -> dict:
+    selected_action = action or state['decision']['action']
     result = agent.generate(state['operation'], state['case'], state['merchant_reply'],
                             state['evidence_checklist'], {**state['retrieval'], 'merchant_claim_checks': state['merchant_claim_checks']},
-                            state['audit'].get('feedback', ''), state['decision'])
-    return {'draft': result, 'trace': state['trace'] + [state['decision']['action']]}
+                            state['audit'].get('feedback', ''), {**state['decision'], 'action': selected_action})
+    return {'draft': result, 'trace': state['trace'] + [selected_action]}
+
+
+def strategy_node(action: str):
+    def run(state: AgentState) -> dict:
+        return draft(state, action)
+    run.__name__ = action
+    return run
 
 
 def audit_citations(state: AgentState) -> dict:
@@ -121,7 +129,8 @@ def finish(state: AgentState) -> dict:
             result['complaint'] += source_text
     result.update(summary=state['case'].get('summary', ''), evidence_checklist=state['evidence_checklist'],
                   merchant_claim_checks=state['merchant_claim_checks'],
-                  decision=state['decision'], retrieval=state['retrieval']['status'],
+                  decision=state['decision'], executed_tools=state['executed_tools'],
+                  retrieval=state['retrieval']['status'],
                   retrieved_cases=state['retrieval']['cases'],
                   audit={**state['audit'], 'correction_attempts': state['correction_count'],
                          'correction_history': state['correction_history']},
@@ -137,18 +146,18 @@ for name, function in [('assess_evidence', assess_evidence), ('decide', decide),
                        ('retrieve_context', retrieve_context), ('audit_citations', audit_citations),
                        ('correct', correct), ('safe_fallback', safe_fallback), ('finish', finish)]:
     builder.add_node(name, function)
-for action in ('collect_evidence', 'negotiate', 'escalate', 'complaint'):
-    builder.add_node(action, draft)
+for action in ('clarify_user', 'collect_evidence', 'negotiate', 'escalate', 'complaint'):
+    builder.add_node(action, strategy_node(action))
     builder.add_edge(action, 'audit_citations')
 builder.add_edge(START, 'assess_evidence')
 builder.add_edge('assess_evidence', 'decide')
 builder.add_conditional_edges('decide', route_decision,
-                              {name: name for name in ('retrieve_context', 'collect_evidence', 'negotiate', 'escalate', 'complaint')})
+                              {name: name for name in ('retrieve_context', 'clarify_user', 'collect_evidence', 'negotiate', 'escalate', 'complaint')})
 builder.add_edge('retrieve_context', 'decide')
 builder.add_conditional_edges('audit_citations', route_after_audit,
                               {name: name for name in ('correct', 'safe_fallback', 'finish')})
 builder.add_conditional_edges('correct', lambda state: state['decision']['action'],
-                              {name: name for name in ('collect_evidence', 'negotiate', 'escalate', 'complaint')})
+                              {name: name for name in ('clarify_user', 'collect_evidence', 'negotiate', 'escalate', 'complaint')})
 builder.add_edge('safe_fallback', 'finish')
 builder.add_edge('finish', END)
 workflow = builder.compile()

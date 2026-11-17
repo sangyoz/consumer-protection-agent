@@ -15,6 +15,7 @@ const examples = [{ title: '网购商品质量问题', text: '我网购的商品
 
 const extracted = ref({ fields: {}, evidence: [], missing: [] })
 const detailsOpen = ref(false)
+const creating = ref(false)
 const composer = ref(null)
 const autoFilled = new Set()
 const manualFields = reactive(new Set())
@@ -58,6 +59,7 @@ async function runExtract() {
   try {
     // mock 模式走前端规则，api 模式走后端接口，结构一致。
     const result = await api.extract(text)
+    if (form.summary.trim() !== text) return
     extracted.value = result
     applyFields(result.fields)
     clearAutoFilled(result.fields)
@@ -132,10 +134,17 @@ function validate() {
 }
 
 async function submit() {
-  if (!form.summary.trim() || !validate()) return
-  const payload = { ...form, title: form.title.trim(), summary: form.summary.trim(), amount: Number(form.amount || 0), merchant: form.merchant.trim(), goal: form.goal.trim(), platform: form.platform.trim(), product: form.product.trim(), payee: form.payee.trim(), creditCode: form.creditCode.trim().toUpperCase() }
-  const item = await store.create(payload)
-  if (item) { store.notify('案件已创建，可以继续补充材料'); router.push(`/cases/${item.id}/analysis`) }
+  if (creating.value || !form.summary.trim() || !validate()) return
+  creating.value = true
+  try {
+    clearTimeout(debounceTimer)
+    const summary = form.summary.trim()
+    await runExtract()
+    if (form.summary.trim() !== summary || !validate()) return
+    const payload = { ...form, title: form.title.trim(), summary: form.summary.trim(), amount: Number(form.amount || 0), merchant: form.merchant.trim(), goal: form.goal.trim(), platform: form.platform.trim(), product: form.product.trim(), payee: form.payee.trim(), creditCode: form.creditCode.trim().toUpperCase() }
+    const item = await store.create(payload)
+    if (item) { store.notify('案件已创建，可以继续补充材料'); router.push(`/cases/${item.id}`) }
+  } finally { creating.value = false }
 }
 </script>
 
@@ -143,7 +152,7 @@ async function submit() {
   <div class="intake-layout">
     <aside class="history-sidebar" aria-label="历史案件">
       <div class="history-heading">历史案件 <span>{{ store.items.length }}</span></div>
-      <RouterLink v-for="item in store.items" :key="item.id" :to="`/cases/${item.id}/analysis`" class="history-item"><AppIcon name="chat" :size="16" /><div><strong>{{ item.title }}</strong><StatusBadge :stage="item.stage" /></div></RouterLink>
+      <RouterLink v-for="item in store.items" :key="item.id" :to="`/cases/${item.id}`" class="history-item"><AppIcon name="chat" :size="16" /><div><strong>{{ item.title }}</strong><StatusBadge :stage="item.stage" /></div></RouterLink>
       <p v-if="!store.items.length" class="fine-print">新建的案件会保存在这里。</p>
       <RouterLink to="/" class="text-link history-home"><AppIcon name="back" :size="15" />查看全部案件</RouterLink>
     </aside>
@@ -189,7 +198,7 @@ async function submit() {
 
           <div class="intake-compose-footer">
             <span><AppIcon name="file" :size="16" />创建后可添加证据材料</span>
-            <button class="btn btn-primary" :disabled="store.busy || !form.summary.trim()">{{ store.busy ? '正在创建…' : '创建案件，开始梳理' }}<AppIcon name="arrow" :size="17" /></button>
+            <button class="btn btn-primary" :disabled="creating || store.busy || !form.summary.trim()">{{ creating || store.busy ? '正在创建…' : '创建案件，开始梳理' }}<AppIcon name="arrow" :size="17" /></button>
           </div>
         </form>
         <p class="intake-caption">先描述，再补充，一件事对应一个独立的维权记录。</p>

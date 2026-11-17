@@ -87,12 +87,12 @@ function findProduct(text) {
     if (index < 0) continue
     const start = index + verb.length
     let head = text.slice(start, start + 40).replace(/^[，,。；、 了的]+/, '').split(/[，,。；;！!？?\n]/)[0]
-    head = head.replace(/^[了]?(?:一|两|三|几|半)?[个台部双件张只瓶盒套份]?/, '')
-    // 商品名后面常跟金额（「无线耳机399元」），先截掉，避免金额混进商品名。
-    const amountHit = head.match(PRODUCT_AMOUNT_RE)
-    if (amountHit) {
-      const at = amountHit.index
-      head = at === 0 ? head.slice(amountHit[0].length).replace(/^的/, '') : head.slice(0, at)
+    // Prices and quantities can appear in either order, matching the backend.
+    for (let pass = 0; pass < 3; pass++) {
+      head = head.replace(/^(?:[一二三四五六七八九十百两几半\d]+)?[个台部双件张只瓶盒套份副本辆节次]\s*/, '')
+      const amountHit = head.match(PRODUCT_AMOUNT_RE)
+      if (amountHit) head = amountHit.index === 0 ? head.slice(amountHit[0].length) : head.slice(0, amountHit.index)
+      head = head.replace(/^[的\s]+/, '')
     }
     for (const noise of PRODUCT_NOISE) {
       if (head.includes(noise)) head = head.split(noise)[0]
@@ -134,7 +134,17 @@ function findMerchant(text) {
   const pattern = new RegExp(`([\\u4e00-\\u9fa5A-Za-z0-9]{2,20}(?:${MERCHANT_SUFFIXES.join('|')}))`, 'g')
   for (const match of text.matchAll(pattern)) {
     let name = match[1]
-    name = name.replace(/^(?:这家|那家|该|这个|那个|一家|在|于|从)/, '')
+    // An unnamed shop category must remain missing, not become a business name.
+    if (/(?:一家|某家|某个|某|一个)/.test(name)) continue
+    name = name.replace(/^(?:(?:我|本人)(?:之前|曾经)?(?:在|从|于)|在|于|从)/, '')
+    for (const platform of PLATFORMS) {
+      if (name.startsWith(platform)) {
+        name = name.slice(platform.length).replace(/^[上的]+/, '')
+        break
+      }
+    }
+    name = name.replace(/^(?:这家|那家|该|这个|那个)/, '')
+    if (/^(?:我|你|他|她|它|线上|线下)/.test(name)) continue
     if (name.length < 3 || MERCHANT_STOP.has(name)) continue
     if (MERCHANT_VERB_PREFIX.some(prefix => name.startsWith(prefix))) continue
     const offset = Math.max(match[1].indexOf(name), 0)

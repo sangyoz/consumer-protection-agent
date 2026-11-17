@@ -128,6 +128,37 @@ class WorkflowTests(unittest.TestCase):
             result = workflow.decide(state)
         self.assertIn('search_local_law', result['decision']['tools'])
 
+    def test_reply_turn_can_negotiate_while_evidence_is_missing(self):
+        decision = {'action': 'negotiate', 'reason': '先回应商家的拒绝理由', 'tools': [],
+                    'query': '', 'confidence': 'medium', 'uncertainties': ['商品是否使用过'],
+                    'user_questions': []}
+        with patch.object(agent, '_json_call', return_value=decision):
+            result = agent.decide('reply', self.case, '特价商品不能退。',
+                                  [{'key': 'payment', 'status': 'missing', 'required': True}],
+                                  {}, [])
+        self.assertEqual(result['action'], 'negotiate')
+        self.assertEqual(result['uncertainties'], ['商品是否使用过'])
+
+    def test_initial_analysis_keeps_required_evidence_gate_and_complaint_is_explicit(self):
+        decision = {'action': 'escalate', 'reason': '资料不足', 'tools': [], 'query': '',
+                    'confidence': 'low', 'uncertainties': [], 'user_questions': []}
+        inventory = [{'key': 'payment', 'status': 'missing', 'required': True}]
+        with patch.object(agent, '_json_call', side_effect=[dict(decision), dict(decision)]):
+            initial = agent.decide('analysis', self.case, '', inventory, {}, [])
+            complaint = agent.decide('complaint', self.case, '', inventory, {}, [])
+        self.assertEqual(initial['action'], 'collect_evidence')
+        self.assertEqual(complaint['action'], 'complaint')
+
+    def test_clarify_action_routes_to_a_bounded_user_question(self):
+        decision = {'action': 'clarify_user', 'reason': '退款计算取决于剩余服务时长', 'tools': [],
+                    'query': '', 'confidence': 'low', 'uncertainties': ['已使用的服务时长未知'],
+                    'user_questions': ['会员服务已经使用了多长时间？']}
+        with patch.object(agent, '_json_call', side_effect=[dict(decision), None]):
+            result = workflow.run_case('reply', self.case, '可以退一半。')
+        self.assertEqual(result['decision']['action'], 'clarify_user')
+        self.assertIn('会员服务已经使用了多长时间', result['reply'])
+        self.assertIn('clarify_user', result['trace'])
+
 
 if __name__ == '__main__':
     unittest.main()

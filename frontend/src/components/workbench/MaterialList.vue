@@ -1,11 +1,11 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useCasesStore } from '../../stores/cases'
 import { api } from '../../api'
 import { MATERIAL_KINDS, MATERIAL_SOURCES, missingMaterials, shortDate } from '../../domain/case'
 import AppIcon from '../AppIcon.vue'
 
-const props = defineProps({ item: Object })
+const props = defineProps({ item: Object, showSuggestions: { type: Boolean, default: true } })
 const store = useCasesStore()
 
 const missing = computed(() => missingMaterials(props.item.materials))
@@ -13,6 +13,7 @@ const previewUrl = ref('')
 const previewName = ref('')
 
 watch(() => props.item?.id, () => { closePreview() })
+onUnmounted(closePreview)
 
 function formatSize(size) {
   const bytes = Number(size || 0)
@@ -72,7 +73,7 @@ async function remove(material) {
       <AppIcon name="file" :size="17" />
       <div class="evidence-file-body">
         <strong>{{ file.name }}</strong>
-        <small>已上传 · {{ formatSize(file.size) }}<template v-if="file.uploadedAt"> · {{ shortDate(file.uploadedAt) }}</template></small>
+        <small>{{ file.status === 'demo' ? '示例材料' : file.status === 'metadata' ? '仅记录文件名' : '已上传，内容未核验' }} · {{ formatSize(file.size) }}<template v-if="file.uploadedAt"> · {{ shortDate(file.uploadedAt) }}</template></small>
         <span class="material-tags">
           <em class="tag">{{ MATERIAL_KINDS[file.kind] || MATERIAL_KINDS.other }}</em>
           <em class="tag tag-muted">{{ MATERIAL_SOURCES[file.source] || MATERIAL_SOURCES.user }}</em>
@@ -91,13 +92,13 @@ async function remove(material) {
     </div>
     <p v-if="!item.materials.length" class="small muted">可先补充订单或付款凭证。</p>
 
-    <div v-if="missing.length" class="material-gap">
+    <div v-if="showSuggestions && missing.length" class="material-gap">
       <span class="field-caption">建议补充的材料</span>
       <ul class="checklist">
         <li v-for="entry in missing" :key="entry.kind"><AppIcon name="file" :size="16" />{{ entry.label }}</li>
       </ul>
     </div>
-    <p v-else class="small muted gap-ok">必备材料已齐全，仍可补充合同、宣传页等佐证。</p>
+    <p v-else-if="showSuggestions" class="small muted gap-ok">各类材料均有记录，内容与完整性仍需核对。</p>
     
     <div v-if="previewUrl" class="preview-mask" @click="closePreview">
       <img :src="previewUrl" :alt="previewName" @click.stop />

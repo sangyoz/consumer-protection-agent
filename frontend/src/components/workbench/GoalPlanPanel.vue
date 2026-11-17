@@ -30,6 +30,7 @@ const materialSummary = computed(() => {
 
 async function save() {
   const plan = {
+    ...(props.item.goalPlan || {}),
     basic: form.basic.trim(),
     further: form.further.trim(),
     negotiable: form.negotiable.trim(),

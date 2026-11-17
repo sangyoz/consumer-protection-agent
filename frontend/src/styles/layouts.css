@@ -197,3 +197,40 @@
 /* 投诉页：说明 + 生成按钮 + 生成的投诉内容 */
 .complaint-actions { justify-content: flex-start; border-top: 0; padding-top: 0; margin: 16px 0 2px; }
 .complaint-preview-head { margin-top: 24px; }
+
+/* 案件专属路径沿用现有卡片、按钮与绿色状态，不限制步骤数量。 */
+.workbench-tabs { overflow-x: auto; min-width: 0; }
+.workbench-tabs > a { flex-shrink: 0; }
+/* 同学新版的圆点与竖线，绑定案件动态步骤，而非固定五阶段。 */
+.case-plan-progress { list-style: none; padding: 0 0 18px; margin: 0 0 18px; border-bottom: 1px solid var(--line); max-height: min(42vh, 400px); min-height: 0; overflow-y: auto; flex: 0 1 auto; }
+.case-plan-progress li { position: relative; }
+.case-plan-progress li:not(:last-child)::after { content: ''; position: absolute; width: 1px; background: #e2e2e2; top: 50%; height: 100%; left: 13px; pointer-events: none; }
+.case-plan-progress li a { display: flex; align-items: center; gap: 13px; min-height: 54px; padding: 8px 4px 8px 0; font-size: 13px; color: #9a9a9a; position: relative; }
+.case-plan-progress .compact-step { flex: 0 0 27px; }
+.case-plan-progress .case-plan-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.case-plan-progress li.current a { color: var(--brand-ink); font-weight: 600; }
+.case-plan-progress li.current .compact-step { color: #fff; background: var(--brand); box-shadow: 0 0 0 4px #f0f0f0; }
+.case-plan-progress li.done a { color: #5f5f5f; }
+.case-plan-progress li.done .compact-step { background: #e7f6ed; color: #0a8a47; }
+.case-plan-progress li.done small { color: #0a8a47; }
+.case-plan-progress small { color: var(--muted); white-space: nowrap; font-size: 10px; font-weight: 400; }
+.plan-feedback { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.plan-feedback .panel-title { flex-wrap: wrap; gap: 6px; }
+.plan-feedback > .text-link { margin-top: 10px; }
+.plan-feedback-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.plan-step-body { margin-top: 18px; margin-bottom: 18px; }
+.plan-feedback .audit-trace p { margin-top: 12px; }
+
+/* 主操作留在当前模块内，沿用表单和卡片样式。 */
+.step-form-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.step-form-section > h3 { margin-bottom: 8px; }
+.step-form-section > .small { margin-bottom: 14px; }
+.step-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.step-fieldset:disabled { opacity: .65; }
+.step-record { margin-top: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.step-record p { margin-top: 6px; overflow-wrap: anywhere; }
+.step-next { display: inline-block; margin-top: 16px; }
+.evidence-upload { margin-top: 16px; }
+.negotiation-chat > .step-form-section { flex: 0 0 auto; }
+.negotiation-chat > .step-form-section textarea { max-height: 70px; }
+.workspace-layout .negotiation-chat { overflow-y: auto; }

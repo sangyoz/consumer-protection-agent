@@ -9,18 +9,19 @@ const EVIDENCE_DEFS = [
 function evidenceChecklist(item) {
   return EVIDENCE_DEFS.map(([key, label, hints, required]) => {
     const materials = (item.materials || []).filter(material =>
-      hints.some(hint => (material.name || '').toLowerCase().includes(hint))
+      material.status === 'uploaded' && hints.some(hint => (material.name || '').toLowerCase().includes(hint))
     )
     let status = materials.length ? 'uploaded_unverified' : 'missing'
     if (key === 'communication' && (item.messages || []).some(message => message.role === 'merchant')) {
       status = 'user_provided'
     }
+    const declared = item.evidence_checklist?.find(row => row.key === key)
     return {
       key,
       item: label,
-      status,
+      status: declared?.status || status,
       material_ids: materials.map(material => material.id),
-      note: '',
+      note: declared?.note || '',
       required,
       content_verified: false,
     }
@@ -47,7 +48,8 @@ export function analyzeDemo(item) {
     script: `您好，关于${item.title}，${item.goal}。请结合订单及实际履行情况，说明处理方案、计算依据和预计完成时间。`,
     evidence_checklist: checklist,
     engine: 'demo',
-    decision: { action, reason: needsEvidence ? '优先补齐核心交易证据' : '结合已有事实继续协商', tools: [], query: '' },
+    decision: { action, reason: needsEvidence ? '优先补齐核心交易证据' : '结合已有事实继续协商', tools: [], query: '', confidence: 'low', uncertainties: ['演示引擎未进行语义判断'], user_questions: [] },
+    executed_tools: [],
     retrieval: { law_library: 'not_requested', law_search_mode: 'none', case_search: 'not_requested' },
     audit: { valid: true, invalid_citations: [], used_law_ids: [], scope: 'demo', correction_attempts: 0 },
     merchant_claim_checks: [],
