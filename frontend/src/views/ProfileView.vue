@@ -41,9 +41,9 @@ function save() {
 
 <template>
   <div class="page profile-page">
-    <div class="page-heading"><div><div class="eyebrow">个人中心</div><h1>我的基本资料</h1></div></div>
+    <div class="page-heading profile-heading"><div><div class="eyebrow">个人中心</div><h1>我的基本资料</h1></div></div>
 
-    <form class="panel content-panel" @submit.prevent="save">
+    <form class="panel content-panel profile-form" @submit.prevent="save">
       <div class="profile-intro">
         <span class="avatar large-avatar">{{ form.name ? form.name[0] : '我' }}</span>
         <div>
@@ -58,11 +58,10 @@ function save() {
       <label class="field">身份证号<input v-model="form.idCard" maxlength="18" placeholder="（选填）" autocomplete="off" /><small v-if="errors.idCard" class="field-error">{{ errors.idCard }}</small></label>
 
       <div v-if="form.name || form.phone || form.idCard" class="profile-mask-preview">
-        <span class="field-caption">脱敏预览</span>
+        <span class="field-caption">展示资料预览</span>
         <p class="small muted">姓名：{{ maskName(form.name) || '未填写' }}　电话：{{ maskTail(form.phone) || '未填写' }}　身份证：{{ maskTail(form.idCard) || '未填写' }}</p>
       </div>
 
-      <div class="notice-box"><strong>资料使用说明</strong><p>当前没有账户认证，也不会自动对外提交个人资料。身份证、平台身份验证等信息在实际需要时再由你确认提供；页面展示时默认脱敏。</p></div>
       <button class="btn btn-primary" type="submit">保存基本资料</button>
     </form>
   </div>

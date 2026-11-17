@@ -83,15 +83,12 @@ async function save() {
 
 <template>
   <div class="page followup-page">
-    <div class="page-heading"><div><div class="eyebrow">持续跟进</div><h1>处理到哪一步了？</h1></div></div>
+    <div class="page-heading followup-heading"><div><div class="eyebrow">持续跟进</div><h1>处理到哪一步了？</h1></div><label class="followup-picker-inline"><span>案件</span><select v-model="selected" @change="resetForm"><option v-for="c in store.items" :key="c.id" :value="c.id">{{ c.title }}</option></select></label></div>
     <div v-if="store.error" class="error-banner" role="alert">{{ store.error }}</div>
     <div v-if="store.busy && !store.items.length" class="empty-state">正在加载案件…</div>
     <div v-else-if="!store.items.length" class="panel empty-state"><h2>还没有可以跟进的案件</h2><RouterLink to="/cases/new" class="btn btn-primary">新建案件</RouterLink></div>
 
     <template v-else>
-      <label class="field followup-picker">选择案件
-        <select v-model="selected" @change="resetForm"><option v-for="c in store.items" :key="c.id" :value="c.id">{{ c.title }}</option></select>
-      </label>
 
       <div v-if="item" class="followup-grid">
         <section class="panel content-panel">

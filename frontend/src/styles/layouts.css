@@ -10,22 +10,22 @@
 .case-row-content { min-width: 0; }
 .case-list-layout .case-excerpt { -webkit-line-clamp: 1; margin-bottom: 13px; }
 .case-list-layout .case-card h2 { margin-bottom: 7px; }
-.case-row-meta { display: flex; flex-wrap: wrap; gap: 18px; color: #98a2b3; font-size: 11px; }
+.case-row-meta { display: flex; flex-wrap: wrap; gap: 18px; color: #7a808b; font-size: 11px; }
 .case-row-meta strong { color: #6b7b94; font-weight: 500; }
 .case-row-meta .text-link { font-size: 11px; }
 .case-row-progress { display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
 .case-stage-track { display: flex; width: 160px; gap: 5px; }
-.case-stage-track i { flex: 1; height: 4px; border-radius: 2px; background: #edf0f6; }
-.case-stage-track i.reached { background: #7995ef; }
+.case-stage-track i { flex: 1; height: 4px; border-radius: 2px; background: #ededed; }
+.case-stage-track i.reached { background: #06ad56; }
 .case-row-progress .text-link { font-size: 11px; }
 .new-case-row { display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px dashed #d9e1ef; border-radius: 12px; color: #8a9ab5; padding: 20px; font-size: 12px; }
-.new-case-row:hover { color: var(--brand); background: var(--brand-soft); }
+.new-case-row:hover { color: var(--brand-ink); background: var(--brand-soft); }
 
 /* 新建：左侧历史案件，中央留给对话，输入框落在底部。 */
 .intake-layout { display: grid; grid-template-columns: 248px minmax(0, 1fr); flex: 1; min-height: 0; overflow: hidden; }
 .history-sidebar { display: flex; flex-direction: column; gap: 8px; background: #fff; border-right: 1px solid var(--line); padding: 24px 17px; min-height: 0; overflow-y: auto; }
 .history-sidebar > .btn { margin-bottom: 23px; }
-.history-heading { color: #96a1b3; font-size: 11px; display: flex; justify-content: space-between; padding: 0 10px; margin: 4px 0 8px; }
+.history-heading { color: #787d86; font-size: 11px; display: flex; justify-content: space-between; padding: 0 10px; margin: 4px 0 8px; }
 .history-item { display: flex; align-items: flex-start; gap: 9px; padding: 13px 10px; color: #8896ae; border-radius: 9px; }
 .history-item:hover { background: var(--brand-soft); }
 .history-item > svg { margin-top: 2px; }
@@ -35,18 +35,18 @@
 .history-home { margin-top: auto; padding: 24px 10px 0; }
 .intake-main { min-width: 0; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 36px clamp(22px, 6vw, 104px) 22px; }
 .intake-welcome { margin: auto 0; padding: 50px 0 70px; text-align: center; }
-.intake-emblem { display: grid; place-items: center; width: 55px; height: 55px; background: #eaf0ff; color: #476cda; border-radius: 17px; margin: 0 auto 23px; font-size: 28px; font-weight: 600; }
+.intake-emblem { display: grid; place-items: center; width: 55px; height: 55px; background: var(--brand); color: #fff; border-radius: 4px; margin: 0 auto; font-family: var(--font-title); font-size: 25px; font-weight: 600; letter-spacing: 2px; }
 .intake-welcome .eyebrow { margin-bottom: 10px; }
 .intake-welcome h1 { font-size: 30px; }
 .intake-welcome > p { font-size: 13px; color: #8c99ae; margin-top: 13px; line-height: 1.9; }
 .intake-welcome .example-list { justify-content: center; margin-top: 27px; }
 .intake-composer-area { width: 100%; max-width: 880px; margin: 0 auto; }
-.intake-composer { padding: 18px 22px 15px; border-color: #dce4f2; box-shadow: 0 6px 28px #2b447307; }
+.intake-composer { padding: 18px 22px 15px; border-color: #dcdde2; box-shadow: 0 6px 28px rgba(23,26,33,.05); }
 .intake-composer > textarea { border: 0; box-shadow: none; padding: 0; resize: vertical; min-height: 90px; font-size: 14px; }
 .intake-composer > textarea:focus { box-shadow: none; }
 .intake-composer > .field-caption { margin-bottom: 10px; color: #8291a9; }
 .intake-details { margin: 12px 0; }
-.intake-details > summary { color: #8c9ab0; font-size: 11px; cursor: pointer; }
+.intake-details > summary { color: #757a83; font-size: 11px; cursor: pointer; }
 .intake-details > summary span { color: #aab3c1; margin-left: 8px; }
 .intake-compose-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid #f0f3f8; padding-top: 13px; }
 .intake-compose-footer > span { display: flex; align-items: center; gap: 6px; color: #a1acbd; font-size: 10px; }
@@ -55,8 +55,8 @@
 .extract-title { display: flex; justify-content: space-between; align-items: center; color: #71809a; font-size: 10px; margin-bottom: 10px; }
 .extract-title span:last-child { color: #a7b0be; }
 .extract-tags { display: flex; flex-wrap: wrap; gap: 7px; }
-.extract-tag { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #dbe4f8; background: #f5f8ff; color: #4a62a8; border-radius: 7px; padding: 5px 9px; font-size: 11px; line-height: 1.5; }
-.extract-tag:hover { border-color: #b6c8f4; background: #edf2ff; }
+.extract-tag { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e3e4e8; background: #f7f8fa; color: #5b6472; border-radius: 4px; padding: 5px 9px; font-size: 11px; }
+.extract-tag:hover { border-color: #c9ccd3; background: #f1f2f4; }
 .extract-tag span { color: #8c99b0; font-size: 10px; }
 .extract-tag strong { font-weight: 600; }
 .extract-missing { margin-top: 9px; color: #b07a20; font-size: 10px; line-height: 1.8; }
@@ -96,8 +96,8 @@
 .compact-step { display: grid; place-items: center; height: 23px; width: 23px; border-radius: 50%; background: #f0f3f8; font-size: 10px; }
 .compact-progress .done { color: #759184; }
 .compact-progress .done .compact-step { background: #edf7f2; color: #469476; }
-.compact-progress .current { color: var(--brand); }
-.compact-progress .current .compact-step { color: #fff; background: var(--brand); box-shadow: 0 0 0 4px #edf2ff; }
+.compact-progress .current { color: var(--brand-ink); }
+.compact-progress .current .compact-step { color: #fff; background: var(--brand); box-shadow: 0 0 0 4px #f0f0f0; }
 .workspace-right-body { flex: 1; min-height: 0; overflow-y: auto; }
 .right-advice .panel-title h2 { font-size: 14px; }
 .right-advice .strategy-card h3 { font-size: 12px; }
@@ -158,7 +158,7 @@
   .intake-welcome { padding: 32px 0; }
   .intake-welcome h1 { font-size: 24px; }
   .intake-welcome > p { font-size: 12px; }
-  .intake-emblem { width: 46px; height: 46px; font-size: 24px; margin-bottom: 20px; }
+  .intake-emblem { display: grid; place-items: center; width: 55px; height: 55px; background: var(--brand); color: #fff; border-radius: 4px; margin: 0 auto; font-family: var(--font-title); font-size: 25px; font-weight: 600; letter-spacing: 2px; }
   .intake-welcome .example-list { gap: 7px; }
   .example-chip { font-size: 10px; }
   .intake-composer { padding: 16px; }
@@ -182,12 +182,12 @@
 
 /* 左栏编辑：一行一个字段，输入区改为「标签：值」的行内样式，无边框 */
 .case-context .edit-facts .form-grid { display: block; }
-.case-context .edit-facts .field { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: center; gap: 6px; margin: 0 0 8px; font-size: 10px; color: #8a97ad; line-height: 1.8; }
-.case-context .edit-facts .field input { width: 100%; min-width: 0; padding: 3px 0 5px; border: 0; border-bottom: 1px solid #e6ebf4; border-radius: 0; background: transparent; box-shadow: none; font-size: 12px; }
+.case-context .edit-facts .field { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: center; gap: 6px; margin: 0 0 8px; font-size: 10px; color: #737884; line-height: 1.8; }
+.case-context .edit-facts .field input { width: 100%; min-width: 0; padding: 3px 0 5px; border: 0; border-bottom: 1px solid #e6e7ea; border-radius: 0; background: transparent; box-shadow: none; font-size: 12px; }
 .case-context .edit-facts .field input:focus { border-bottom-color: var(--brand); box-shadow: none; }
 .case-context .edit-facts .field-error { grid-column: 2; margin: 0; font-size: 10px; color: #c4483f; }
 .case-context .edit-facts > .field { display: block; margin: 6px 0 10px; }
-.case-context .edit-facts > .field textarea { display: block; width: 100%; margin-top: 4px; padding: 5px 0; border: 0; border-bottom: 1px solid #e6ebf4; border-radius: 0; background: transparent; box-shadow: none; font-size: 12px; line-height: 1.9; resize: none; }
+.case-context .edit-facts > .field textarea { display: block; width: 100%; margin-top: 4px; padding: 5px 0; border: 0; border-bottom: 1px solid #e6e7ea; border-radius: 0; background: transparent; box-shadow: none; font-size: 12px; line-height: 1.9; resize: none; }
 .case-context .edit-facts > .field textarea:focus { border-bottom-color: var(--brand); box-shadow: none; }
 .case-context .edit-actions { display: flex; gap: 6px; margin-top: 12px; }
 .case-context .edit-actions .btn { flex: 1; min-height: 31px; padding: 5px 6px; font-size: 11px; }
