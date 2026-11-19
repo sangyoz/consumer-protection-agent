@@ -2,26 +2,25 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCasesStore } from '../../stores/cases'
-import { caseSteps, TERMINAL_STEPS, STEP_STATUS } from '../../domain/plan'
+import { TERMINAL_STEPS, STEP_STATUS } from '../../domain/plan'
 const props = defineProps({ item: Object, step: Object })
 const store = useCasesStore()
 const router = useRouter()
 const note = ref('')
-const next = computed(() => { const rows = caseSteps(props.item); return rows[rows.findIndex(row => row.id === props.step?.id) + 1] })
+const placeholder = computed(() => ({ evidence: '例如：订单和付款截图已整理。', platform: '例如：平台拒绝处理，原因是……', negotiation: '例如：商家仍拒绝退款。', calculation: '例如：已核对剩余课时及退款估算。' })[props.step?.type] || '记录本步骤实际处理结果。')
 async function report(status) {
   const result = await store.act('stepFeedback', props.item.id, props.step.id, { status, note: note.value.trim() })
-  if (result) { store.notify('步骤结果已保存，后续路径已调整'); router.push(`/cases/${result.id}/${result.plan.current_step_id}`) }
+  if (result) { store.notify('步骤结果已保存'); router.push(`/cases/${result.id}/${result.plan.current_step_id}`) }
 }
 </script>
 <template>
   <section v-if="step && step.type !== 'other'" class="step-form-section">
-    <h3>这一步处理得怎么样？</h3>
-    <p class="small muted">保存资料或查看页面不会自动完成步骤。实际做完后记录结果，Agent 会据此调整后续安排。</p>
+    <h3>记录本步结果</h3>
     <template v-if="!TERMINAL_STEPS.includes(step.status) && item.stage !== 'resolved'">
-      <label class="field">本步骤实际结果<textarea v-model="note" rows="2" maxlength="2000" placeholder="例如：已整理订单和付款截图，故障视频也已保存。" :disabled="store.busy" /></label>
-      <div class="plan-feedback-actions"><button class="btn btn-primary" :disabled="store.busy || !note.trim()" @click="report('completed')">完成本步并调整后续</button><button class="btn btn-secondary" :disabled="store.busy || !note.trim()" @click="report('failed')">未解决，评估下一步</button><button class="text-link" :disabled="store.busy || !note.trim()" @click="report('skipped')">这一步不适用</button></div>
+      <label class="field">本步骤实际结果<textarea v-model="note" rows="2" maxlength="2000" :placeholder="placeholder" :disabled="store.busy" /></label>
+      <div class="plan-feedback-actions"><button class="btn btn-primary" :disabled="store.busy || !note.trim()" @click="report('completed')">已完成</button><button class="btn btn-secondary" :disabled="store.busy || !note.trim()" @click="report('failed')">未解决</button><button class="text-link" :disabled="store.busy || !note.trim()" @click="report('skipped')">不适用</button></div>
     </template>
     <p v-else class="notice-box">{{ STEP_STATUS[step.status] }}{{ step.note ? '：' + step.note : '' }}</p>
-    <RouterLink v-if="next" :to="`/cases/${item.id}/${next.id}`" class="text-link step-next">先查看下一步：{{ next.title }}</RouterLink>
+    <p class="fine-print">记录结果后进入原定的下一步，案件步骤与顺序保持不变。</p>
   </section>
 </template>

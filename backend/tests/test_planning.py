@@ -39,23 +39,22 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual([s['id'] for s in self.case['plan']['steps']], ['negotiation', 'other'])
         self.assertEqual(self.case['plan']['current_step_id'], 'negotiation')
 
-    def test_failed_step_is_frozen_and_failed_channel_not_recommended(self):
+    def test_failed_step_keeps_order_and_filters_failed_channel(self):
         planning.refresh(self.case)
+        before = [row['id'] for row in self.case['plan']['steps']]
         step = next(row for row in self.case['plan']['steps'] if row['type'] == 'platform')
         step.update(status='failed', note='平台不支持处理此订单')
-        proposal = {'reason': '调整路径', 'steps': [{'type': 'platform', 'reason': '重复', 'completion_condition': '再试'},
-            {'type': 'complaint', 'reason': '整理材料', 'completion_condition': '核对草稿'}],
-            'alternatives': [{'channel': 'platform', 'reason': '不能再推荐'},
-                             {'channel': 'consumer_assoc', 'reason': '核对调解条件'}]}
-        with patch.object(planning.agent, '_json_call', return_value=proposal):
+        self.case['plan']['alternatives'] = [{'channel': 'platform'}, {'channel': 'consumer_assoc'}]
+        with patch.object(planning.agent, '_json_call') as model:
             planning.refresh(self.case, 'step_failed')
-        frozen = self.case['plan']['steps'][0]
-        self.assertEqual(frozen['status'], 'failed')
-        self.assertEqual(frozen['note'], '平台不支持处理此订单')
-        self.assertEqual(self.case['plan']['current_step_id'], 'complaint')
-        self.assertEqual([x['channel'] for x in self.case['plan']['alternatives']], ['consumer_assoc'])
-        self.assertEqual(self.case['plan']['version'], 2)
-        self.assertEqual(len(self.case['plan_history']), 1)
+        model.assert_not_called()
+        self.assertEqual([row['id'] for row in self.case['plan']['steps']], before)
+        saved = next(row for row in self.case['plan']['steps'] if row['type'] == 'platform')
+        self.assertEqual(saved['note'], '平台不支持处理此订单')
+        self.assertEqual(saved['status'], 'failed')
+        self.assertEqual([row['channel'] for row in self.case['plan']['alternatives']], ['consumer_assoc'])
+        self.assertEqual(self.case['plan']['version'], 1)
+        self.assertFalse(self.case.get('plan_history'))
 
     def test_model_cannot_supply_executable_step_or_extra_channel(self):
         with self.assertRaises(ValidationError):
@@ -77,20 +76,53 @@ class PlanningTests(unittest.TestCase):
         planning.refresh(self.case, 'progress_feedback')
         self.assertEqual(self.case['plan'], old)
 
-    def test_failed_negotiation_adds_complaint_and_preserves_history(self):
+    def test_failed_negotiation_does_not_add_or_reorder_steps(self):
         planning.refresh(self.case)
+        before = [s['id'] for s in self.case['plan']['steps']]
         step = next(s for s in self.case['plan']['steps'] if s['type'] == 'negotiation')
         step.update(status='failed', note='商家拒绝退款')
         planning.refresh(self.case, 'step_failed')
-        self.assertIn('complaint', [s['type'] for s in self.case['plan']['steps']])
-        self.assertEqual(next(s for s in self.case['plan']['steps'] if s['type'] == 'negotiation')['status'], 'failed')
+        self.assertEqual([s['id'] for s in self.case['plan']['steps']], before)
+        self.assertNotIn('complaint', before)
+        self.assertEqual(step['status'], 'failed')
 
-    def test_other_yields_to_newly_needed_steps(self):
+    def test_existing_terminal_other_does_not_gain_new_steps(self):
         self.case['plan'] = {'version': 1, 'current_step_id': 'other', 'steps': [
             {'id': 'other', 'type': 'other', 'status': 'active'}]}
         planning.refresh(self.case)
-        self.assertNotEqual(self.case['plan']['current_step_id'], 'other')
-        self.assertEqual(self.case['plan']['steps'][-1]['type'], 'other')
+        self.assertEqual([s['id'] for s in self.case['plan']['steps']], ['other'])
+
+    def test_every_automatic_update_keeps_initial_plan_without_model_calls(self):
+        planning.refresh(self.case)
+        original = copy.deepcopy(self.case['plan'])
+        self.case.update(summary='健身房协商失败，需要核算未消费余额', merchant='', platform='线下门店')
+        for trigger in ('initial', 'facts_updated', 'merchant_reply', 'materials_updated', 'evidence_updated', 'progress_feedback'):
+            with self.subTest(trigger=trigger), patch.object(planning.agent, '_json_call') as model:
+                planning.refresh(self.case, trigger)
+                model.assert_not_called()
+                self.assertEqual(self.case['plan'], original)
+
+    def test_manual_refresh_updates_alternatives_only(self):
+        planning.refresh(self.case)
+        original = copy.deepcopy(self.case['plan'])
+        proposal = {'reason': '结合新反馈核对调解条件', 'alternatives': [
+            {'channel': 'consumer_assoc', 'reason': '核对当地受理条件'}]}
+        with patch.object(planning.agent, '_json_call', return_value=proposal) as model:
+            planning.refresh(self.case, 'manual')
+        self.assertIs(model.call_args.args[-1], planning.AlternativeProposal)
+        for key in ('steps', 'version', 'reason', 'current_step_id', 'updated_at'):
+            self.assertEqual(self.case['plan'][key], original[key])
+        self.assertEqual(self.case['plan']['alternatives_engine'], 'deepseek')
+        self.assertEqual([row['channel'] for row in self.case['plan']['alternatives']], ['consumer_assoc'])
+
+    def test_step_result_advances_within_initial_order(self):
+        planning.refresh(self.case)
+        rows = self.case['plan']['steps']
+        rows[0].update(status='completed', note='已整理')
+        planning.refresh(self.case, 'step_completed')
+        self.assertEqual(self.case['plan']['current_step_id'], rows[1]['id'])
+        self.assertEqual(rows[1]['status'], 'active')
+        self.assertEqual(rows[0]['status'], 'completed')
 
     def test_confirming_evidence_does_not_remove_active_checklist(self):
         planning.refresh(self.case)

@@ -15,7 +15,7 @@ async function save() {
     note: form.note.trim(), channel: form.channel || null, acceptStatus: form.acceptStatus || null,
     caseNo: form.caseNo.trim() || null, deadline: form.deadline || null,
   })
-  if (result) { form.note = ''; saved.value = true; store.notify('处理记录已保存，后续路径已重新评估') }
+  if (result) { form.note = ''; saved.value = true; store.notify('处理记录已保存') }
 }
 </script>
 <template>
@@ -27,14 +27,13 @@ async function save() {
         <div class="form-grid">
           <label class="field">处理渠道<select v-model="form.channel"><option value="">暂未确定</option><option v-for="entry in channels" :key="entry.key" :value="entry.key">{{ entry.name }}</option></select></label>
           <label class="field">受理状态<select v-model="form.acceptStatus"><option value="">暂未确定</option><option v-for="(name, key) in ACCEPT_STATUSES" :key="key" :value="key">{{ name }}</option></select></label>
-          <label class="field">受理编号（选填）<input v-model="form.caseNo" maxlength="100" placeholder="填写实际收到的编号" /></label>
-          <label class="field">答复期限（选填）<input v-model="form.deadline" type="date" /></label>
         </div>
+        <details class="progress-extra"><summary>补充受理编号与期限（选填）</summary><div class="form-grid"><label class="field">受理编号<input v-model="form.caseNo" maxlength="100" placeholder="填写实际收到的编号" /></label><label class="field">答复期限<input v-model="form.deadline" type="date" /></label></div></details>
         <label class="field">答复或处理进展<textarea v-model="form.note" rows="3" required maxlength="3000" placeholder="例如：平台要求补充故障视频，商家仍拒绝退款。" /></label>
-        <button class="btn btn-primary" type="submit" :disabled="!form.note.trim()">{{ store.busy ? '正在保存并评估…' : '保存记录并评估后续步骤' }}</button>
+        <button class="btn btn-primary" type="submit" :disabled="!form.note.trim()">{{ store.busy ? '正在保存…' : '保存处理记录' }}</button>
       </fieldset>
     </form>
     <p v-if="saved" class="small gap-ok" role="status">记录已保存。下方可以查看最近记录。</p>
-    <details v-if="entries.length" class="audit-trace" open><summary>最近处理记录</summary><article v-for="entry in entries" :key="entry.id" class="step-record"><small class="muted">{{ new Date(entry.createdAt).toLocaleString('zh-CN') }} · {{ ACCEPT_STATUSES[entry.acceptStatus] || '已记录' }}</small><p>{{ entry.note }}</p><p v-if="entry.caseNo" class="small muted">编号：{{ entry.caseNo }}</p></article></details>
+    <details v-if="entries.length" class="audit-trace"><summary>最近处理记录（{{ entries.length }}条）</summary><article v-for="entry in entries" :key="entry.id" class="step-record"><small class="muted">{{ new Date(entry.createdAt).toLocaleString('zh-CN') }} · {{ ACCEPT_STATUSES[entry.acceptStatus] || '已记录' }}</small><p>{{ entry.note }}</p><p v-if="entry.caseNo" class="small muted">编号：{{ entry.caseNo }}</p></article></details>
   </section>
 </template>

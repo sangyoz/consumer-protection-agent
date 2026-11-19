@@ -1,4 +1,5 @@
 import { refreshMockPlan } from '../domain/plan'
+import { useAuth } from '../stores/auth'
 import axios from 'axios'
 import { createCase, kindFromName } from '../domain/case'
 import { extractFields } from '../domain/extract'
@@ -7,6 +8,14 @@ import { analyzeDemo, replyDemo, complaintDemo } from './demo-engine'
 
 export const dataMode = import.meta.env.VITE_DATA_MODE === 'api' ? 'api' : 'mock'
 const http = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || '/api', timeout: 180000 })
+http.defaults.withCredentials = true
+http.interceptors.response.use(response => response, error => {
+  if (error.response?.status === 401) {
+    useAuth().invalidate()
+    if (!['/login', '/register'].includes(window.location.pathname)) window.location.assign('/login')
+  }
+  return Promise.reject(error)
+})
 const storageKey = 'youli.cases.v1'
 let memory = null
 function read() {
@@ -32,16 +41,16 @@ function mutate(id, action) {
 function event(item, text) { item.timeline.push({ id: crypto.randomUUID(), text, createdAt: new Date().toISOString() }) }
 function ensureOpen(item) { if (item.stage === 'resolved') throw new Error('案件已解决，请先在处理跟进中更新状态。') }
 const mock = {
-  async replan(id) { return mutate(id, item => { ensureOpen(item); event(item, '已重新规划处理路径') }) },
+  async replan(id) { return mutate(id, item => { ensureOpen(item); event(item, '已更新其他维权方式建议') }) },
   async stepFeedback(id, stepId, payload) { return mutate(id, item => {
     ensureOpen(item)
     const step = item.plan?.steps.find(row => row.id === stepId)
-    if (!step || step.type === 'other') throw new Error('该步骤不能标记结果，请重新评估路径')
+    if (!step || step.type === 'other') throw new Error('该步骤不能标记结果，请在处理跟进中记录实际进展')
     if (!['completed', 'failed', 'skipped'].includes(payload.status) || !payload.note?.trim()) throw new Error('请填写有效的处理结果')
     if (['completed', 'failed', 'skipped'].includes(step.status)) throw new Error('该步骤已记录结果')
     step.status = payload.status; step.note = payload.note.trim()
     item.followups ||= []; item.followups.push({ id: crypto.randomUUID(), step_id: stepId, status: payload.status, note: step.note, createdAt: new Date().toISOString() })
-    event(item, '已记录步骤结果并调整后续路径')
+    event(item, '已记录步骤结果')
   }) },
   async listCases() { return read().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) },
   async getCase(id) { const item = read().find(c => c.id === id); if (!item) throw new Error('案件不存在，请返回案件中心。'); if (!item.plan) { refreshMockPlan(item, 'legacy_case'); const items = read(); items[items.findIndex(row => row.id === id)] = item; write(items) }; return item },

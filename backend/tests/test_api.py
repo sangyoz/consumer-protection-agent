@@ -10,13 +10,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app import main
+from app import main, auth
 from app.database import get_session
 from app.services import agent
 
 
 class ApiFlowTests(unittest.TestCase):
     def setUp(self):
+        with auth._lock:
+            auth._attempts.clear()
         self.temp = tempfile.TemporaryDirectory()
         self.env = patch.dict(os.environ, {'DEEPSEEK_API_KEY': '', 'BOCHA_API_KEY': '',
                                            'LAW_CORPUS_PATH': '', 'LAW_DB_PATH': str(Path(self.temp.name) / 'legal.sqlite3')})
@@ -34,6 +36,8 @@ class ApiFlowTests(unittest.TestCase):
         main.app.dependency_overrides[get_session] = session_override
         self.client_context = TestClient(main.app)
         self.client = self.client_context.__enter__()
+        response = self.client.post('/api/auth/register', json={'username': 'test_user', 'password': 'test_password_123'})
+        self.assertEqual(response.status_code, 201, response.text)
 
     def tearDown(self):
         self.client_context.__exit__(None, None, None)
@@ -56,10 +60,11 @@ class ApiFlowTests(unittest.TestCase):
         fallback = self.client.post('/api/cases', json={'summary': '商家一直推脱，希望帮忙看看怎么维权。', 'goal': '', 'product': ''}).json()
         self.assertEqual(fallback['title'], '商家一直推脱，希望帮忙看看怎么维权。')
 
-    def test_case_plan_feedback_replans_and_keeps_failed_result(self):
+    def test_case_plan_feedback_keeps_route_and_failed_result(self):
         case_id = self.create_case()
         case = self.client.get(f'/api/cases/{case_id}').json()
         self.assertEqual(case['plan']['steps'][-1]['type'], 'other')
+        original_ids = [s['id'] for s in case['plan']['steps']]
         current = case['plan']['current_step_id']
         self.assertEqual(self.client.post(f'/api/cases/{case_id}/steps/{current}/feedback',
                          json={'status': 'failed', 'note': '  '}).status_code, 422)
@@ -69,12 +74,15 @@ class ApiFlowTests(unittest.TestCase):
         case = response.json()
         self.assertEqual(next(s for s in case['plan']['steps'] if s['id'] == current)['status'], 'failed')
         self.assertNotEqual(case['plan']['current_step_id'], current)
-        self.assertEqual(case['plan']['version'], 2)
+        self.assertEqual(case['plan']['version'], 1)
+        self.assertEqual([s['id'] for s in case['plan']['steps']], original_ids)
         self.assertEqual(self.client.post(f'/api/cases/{case_id}/steps/{current}/feedback',
                          json={'status': 'completed', 'note': '覆盖历史'}).status_code, 409)
         self.assertEqual(self.client.post(f'/api/cases/{case_id}/steps/other/feedback',
                          json={'status': 'failed', 'note': '无果'}).status_code, 400)
-        self.assertEqual(self.client.post(f'/api/cases/{case_id}/plan').json()['plan']['version'], 3)
+        updated = self.client.post(f'/api/cases/{case_id}/plan').json()
+        self.assertEqual(updated['plan']['version'], 1)
+        self.assertEqual([s['id'] for s in updated['plan']['steps']], original_ids)
 
     def test_complete_case_flow_and_confirmation(self):
         case_id = self.create_case()

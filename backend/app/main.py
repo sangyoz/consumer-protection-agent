@@ -8,13 +8,17 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .database import BACKEND_DIR, Base, CaseRecord, engine, get_session
+from . import auth
 from .agents import workflow as agent_workflow
 from .schemas import CaseInput, CaseUpdate, EvidenceInput, ExtractInput, MaterialKindInput, MessageInput, ProgressInput, StepFeedback
 from .services import agent, complaint, extract as extractor, retrieval, rules, planning
+from .services.case_repository import load_case, store_case
+from .services.schema_migration import upgrade_schema
 
 UPLOAD_DIR = BACKEND_DIR / 'uploads'
 MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -23,7 +27,8 @@ ALLOWED_SUFFIXES = {'.pdf', '.docx', '.png', '.jpg', '.jpeg', '.txt'}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(engine)
+    upgrade_schema(engine)
+    auth.upgrade_ownership(engine)
     UPLOAD_DIR.mkdir(exist_ok=True)
     law_corpus = os.getenv('LAW_CORPUS_PATH', '').strip()
     if law_corpus:
@@ -35,7 +40,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title='有理消费维权助手 API', version='0.2.0', lifespan=lifespan, description='LangGraph 证据盘点、检索、策略生成与引用校验；不自动提交投诉。')
-app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')], allow_credentials=False, allow_methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], allow_headers=['*'])
+app.include_router(auth.router)
+app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')], allow_credentials=True, allow_methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], allow_headers=['*'])
 
 
 def now():
@@ -44,9 +50,9 @@ def now():
 
 def get_case(case_id: str, session: Session) -> tuple[CaseRecord, dict]:
     record = session.get(CaseRecord, case_id)
-    if record is None:
+    if record is None or record.user_id != session.info.get('user_id'):
         raise HTTPException(404, '案件不存在')
-    return record, copy.deepcopy(record.payload)
+    return record, load_case(record)
 
 
 def ensure_open(case: dict):
@@ -60,7 +66,7 @@ def record_event(case: dict, text: str):
 
 
 def save(record: CaseRecord, case: dict, session: Session):
-    record.payload = case
+    store_case(record, case)
     session.commit()
     return case
 
@@ -72,19 +78,25 @@ def save_agent_state(case: dict, result: dict):
 
 
 @app.get('/api/health')
-def health():
-    return {'status': 'ok', 'agentMode': agent.mode(), 'workflow': 'langgraph'}
+def health(session: Session = Depends(get_session)):
+    try:
+        session.execute(text('SELECT 1'))
+    except SQLAlchemyError:
+        raise HTTPException(503, '数据库连接不可用') from None
+    return {'status': 'ok', 'agentMode': agent.mode(), 'workflow': 'langgraph',
+            'database': session.get_bind().dialect.name}
 
 
 @app.post('/api/extract')
-def extract_fields(input: ExtractInput):
+def extract_fields(input: ExtractInput, user=Depends(auth.current_user)):
     """只做规则抽取，返回带原文位置的字段；抽不到的字段进入 missing。"""
     return extractor.extract(input.text)
 
 
 @app.get('/api/cases')
-def list_cases(session: Session = Depends(get_session)):
-    return sorted([record.payload for record in session.scalars(select(CaseRecord))], key=lambda item: item['updatedAt'], reverse=True)
+def list_cases(session: Session = Depends(auth.authenticated_session)):
+    return [load_case(record) for record in session.scalars(select(CaseRecord).where(
+        CaseRecord.user_id == session.info['user_id']).order_by(CaseRecord.updated_at.desc()))]
 
 
 def _default_title(input: CaseInput) -> str:
@@ -94,17 +106,17 @@ def _default_title(input: CaseInput) -> str:
 
 
 @app.post('/api/cases', status_code=201)
-def create_case(input: CaseInput, session: Session = Depends(get_session)):
+def create_case(input: CaseInput, session: Session = Depends(auth.authenticated_session)):
     case_id, created_at = str(uuid4()), now()
     case = {'id': case_id, 'title': input.title.strip() or _default_title(input), 'summary': input.summary, 'merchant': input.merchant.strip(), 'amount': input.amount, 'goal': input.goal.strip() or '希望协助梳理合理诉求', 'tradeTime': input.tradeTime.strip(), 'platform': input.platform.strip(), 'product': input.product.strip(), 'payee': input.payee.strip(), 'creditCode': input.creditCode, 'stage': 'collecting', 'createdAt': created_at, 'updatedAt': created_at, 'analysis': None, 'messages': [], 'materials': [], 'complaint': '', 'complaintAttachments': [], 'goalPlan': None, 'resolution': None, 'followups': [], 'timeline': [{'id': str(uuid4()), 'text': '案件已创建，等待补充信息', 'createdAt': created_at}]}
     planning.refresh(case, 'initial')
-    session.add(CaseRecord(id=case_id, payload=case))
+    session.add(store_case(CaseRecord(id=case_id, user_id=session.info['user_id']), case))
     session.commit()
     return case
 
 
 @app.get('/api/cases/{case_id}')
-def read_case(case_id: str, session: Session = Depends(get_session)):
+def read_case(case_id: str, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     if not case.get('plan') and case.get('stage') != 'resolved':
         planning.refresh(case, 'legacy_case')
@@ -113,7 +125,7 @@ def read_case(case_id: str, session: Session = Depends(get_session)):
 
 
 @app.delete('/api/cases/{case_id}')
-def delete_case(case_id: str, session: Session = Depends(get_session)):
+def delete_case(case_id: str, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     # 案件删除后同步清理已上传文件，避免留下无法归属的附件。
     for material in case.get('materials', []):
@@ -126,7 +138,7 @@ def delete_case(case_id: str, session: Session = Depends(get_session)):
 
 
 @app.put('/api/cases/{case_id}')
-def update_case(case_id: str, input: CaseUpdate, session: Session = Depends(get_session)):
+def update_case(case_id: str, input: CaseUpdate, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     fields = ['title', 'summary', 'merchant', 'amount', 'goal', 'tradeTime', 'platform', 'product', 'payee', 'creditCode', 'complaintAttachments', 'goalPlan']
@@ -142,7 +154,7 @@ def update_case(case_id: str, input: CaseUpdate, session: Session = Depends(get_
 
 
 @app.post('/api/cases/{case_id}/analysis')
-def analyze_case(case_id: str, session: Session = Depends(get_session)):
+def analyze_case(case_id: str, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     save_agent_state(case, agent_workflow.run_analysis(case))
@@ -153,7 +165,7 @@ def analyze_case(case_id: str, session: Session = Depends(get_session)):
 
 
 @app.post('/api/cases/{case_id}/messages')
-def send_message(case_id: str, input: MessageInput, session: Session = Depends(get_session)):
+def send_message(case_id: str, input: MessageInput, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     created_at = now()
@@ -170,7 +182,7 @@ def send_message(case_id: str, input: MessageInput, session: Session = Depends(g
 
 
 @app.post('/api/cases/{case_id}/complaint')
-def generate_complaint(case_id: str, session: Session = Depends(get_session)):
+def generate_complaint(case_id: str, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     result = agent_workflow.run_complaint(case)
@@ -182,7 +194,7 @@ def generate_complaint(case_id: str, session: Session = Depends(get_session)):
 
 
 @app.post('/api/cases/{case_id}/evidence')
-def update_evidence(case_id: str, input: EvidenceInput, session: Session = Depends(get_session)):
+def update_evidence(case_id: str, input: EvidenceInput, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     if input.status == 'not_applicable' and input.key in ('transaction', 'payment'):
@@ -197,7 +209,7 @@ def update_evidence(case_id: str, input: EvidenceInput, session: Session = Depen
 
 
 @app.post('/api/cases/{case_id}/materials')
-async def upload_materials(case_id: str, files: list[UploadFile] = File(...), session: Session = Depends(get_session)):
+async def upload_materials(case_id: str, files: list[UploadFile] = File(...), session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     if not 1 <= len(files) <= 5:
@@ -246,7 +258,7 @@ def find_material(case: dict, material_id: str) -> dict:
 
 
 @app.get('/api/cases/{case_id}/materials/{material_id}/download')
-def download_material(case_id: str, material_id: str, session: Session = Depends(get_session)):
+def download_material(case_id: str, material_id: str, session: Session = Depends(auth.authenticated_session)):
     _, case = get_case(case_id, session)
     material = find_material(case, material_id)
     storage_name = material.get('storageName')
@@ -259,7 +271,7 @@ def download_material(case_id: str, material_id: str, session: Session = Depends
 
 
 @app.delete('/api/cases/{case_id}/materials/{material_id}')
-def delete_material(case_id: str, material_id: str, session: Session = Depends(get_session)):
+def delete_material(case_id: str, material_id: str, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     material = find_material(case, material_id)
@@ -273,7 +285,7 @@ def delete_material(case_id: str, material_id: str, session: Session = Depends(g
 
 
 @app.patch('/api/cases/{case_id}/materials/{material_id}')
-def update_material_kind(case_id: str, material_id: str, input: MaterialKindInput, session: Session = Depends(get_session)):
+def update_material_kind(case_id: str, material_id: str, input: MaterialKindInput, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     material = find_material(case, material_id)
@@ -284,7 +296,7 @@ def update_material_kind(case_id: str, material_id: str, input: MaterialKindInpu
 
 
 @app.post('/api/cases/{case_id}/progress')
-def update_progress(case_id: str, input: ProgressInput, session: Session = Depends(get_session)):
+def update_progress(case_id: str, input: ProgressInput, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     if input.stage == 'resolved' and not input.confirmed:
         raise HTTPException(400, '请确认退款到账或其他诉求已实际履行，再结束案件')
@@ -316,31 +328,28 @@ def update_progress(case_id: str, input: ProgressInput, session: Session = Depen
 
 
 @app.post('/api/cases/{case_id}/plan')
-def replan_case(case_id: str, session: Session = Depends(get_session)):
+def replan_case(case_id: str, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     planning.refresh(case, 'manual')
-    record_event(case, '已结合当前事实重新规划处理路径')
+    record_event(case, '已更新其他维权方式建议，案件步骤保持不变')
     return save(record, case, session)
 
 
 @app.post('/api/cases/{case_id}/steps/{step_id}/feedback')
-def step_feedback(case_id: str, step_id: str, input: StepFeedback, session: Session = Depends(get_session)):
+def step_feedback(case_id: str, step_id: str, input: StepFeedback, session: Session = Depends(auth.authenticated_session)):
     record, case = get_case(case_id, session)
     ensure_open(case)
     step = next((row for row in (case.get('plan') or {}).get('steps', []) if row['id'] == step_id), None)
     if not step:
         raise HTTPException(404, '该步骤不在当前案件计划中')
     if step['type'] == 'other':
-        raise HTTPException(400, '其他维权方式保留为末尾入口，请重新评估路径或在处理跟进中结案')
+        raise HTTPException(400, '其他维权方式保留为末尾入口，请更新其他方式建议或在处理跟进中结案')
     if step['status'] in planning.TERMINAL:
         raise HTTPException(409, '该步骤已记录结果；新情况请通过处理跟进补充')
-    previous = copy.deepcopy(case['plan'])
     step.update(status=input.status, note=input.note, feedback_at=now())
     case.setdefault('followups', []).append({'id': str(uuid4()), 'step_id': step_id,
         'note': input.note, 'status': input.status, 'createdAt': now()})
     planning.refresh(case, 'step_' + input.status)
-    # Keep exactly one pre-feedback snapshot for each plan version.
-    case['plan_history'][-1] = previous
     record_event(case, f'已记录步骤「{step["title"]}」结果：{input.note}')
     return save(record, case, session)

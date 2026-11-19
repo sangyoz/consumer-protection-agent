@@ -233,4 +233,18 @@
 .evidence-upload { margin-top: 16px; }
 .negotiation-chat > .step-form-section { flex: 0 0 auto; }
 .negotiation-chat > .step-form-section textarea { max-height: 70px; }
-.workspace-layout .negotiation-chat { overflow-y: auto; }
+
+
+/* 右栏恢复步骤、建议和结果反馈；整栏滚动，随当前页面更新。 */
+.workspace-layout .workspace-right { display: block; overflow-y: auto; overscroll-behavior-y: contain; }
+.workspace-right .workspace-right-body { min-height: auto; overflow: visible; }
+.workspace-right .case-plan-progress { max-height: none; overflow: visible; }
+.workspace-right .case-plan-progress li a { min-height: 48px; }
+.workspace-right .workspace-right-footer { margin-top: 18px; }
+.workspace-right .plan-feedback { margin-top: 16px; padding-top: 14px; }
+.workspace-right .step-form-section { margin-top: 18px; padding-top: 16px; }
+.workspace-right .step-form-section h3 { margin-bottom: 12px; }
+.workspace-right .plan-feedback-actions .btn { padding: 7px 12px; min-height: 32px; font-size: 12px; }
+.workspace-right .stage-guide > p + p { margin-top: 8px; }
+.progress-extra { margin: 0 0 14px; font-size: 12px; color: var(--muted); }
+.progress-extra .form-grid { margin-top: 12px; }

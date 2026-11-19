@@ -14,6 +14,16 @@ export const TERMINAL_STEPS = ['completed', 'failed', 'skipped']
 export const STEP_STATUS = { active: '当前建议', pending: '待处理', completed: '已完成', failed: '未解决', skipped: '不适用' }
 
 export function rulePlan(item, trigger = 'initial') {
+  if (item.plan) {
+    const plan = structuredClone(item.plan)
+    const current = plan.steps.find(row => !TERMINAL_STEPS.includes(row.status))
+    for (const row of plan.steps) if (!TERMINAL_STEPS.includes(row.status)) row.status = row === current ? 'active' : 'pending'
+    plan.current_step_id = current?.id || 'other'
+    plan.locked = true
+    const excluded = new Set([...plan.steps.filter(row => ['failed', 'skipped'].includes(row.status)).map(row => row.type), ...(item.followups || []).filter(row => row.acceptStatus === 'rejected').map(row => row.channel)])
+    plan.alternatives = (plan.alternatives || []).filter(row => !excluded.has(row.channel))
+    return plan
+  }
   const text = `${item.summary || ''} ${item.product || ''}`
   const types = []
   const failed = new Set((item.plan?.steps || []).filter(row => row.status === 'failed').map(row => row.type))
@@ -36,8 +46,8 @@ export function rulePlan(item, trigger = 'initial') {
   })), { id: 'other', type: 'other', title: STEP_TYPES.other[0], reason: STEP_TYPES.other[1], status: 'pending' }]
   const active = steps.find(row => !TERMINAL_STEPS.includes(row.status))
   active.status = 'active'
-  return { version: (old.version || 0) + 1, current_step_id: active.id, steps, engine: 'rules', trigger,
-    reason: '按已填写事实生成初步路径，收到反馈后重新调整。演示模式使用本地规则。',
+  return { locked: true, version: (old.version || 0) + 1, current_step_id: active.id, steps, engine: 'rules', trigger,
+    reason: '按首次填写的事实生成固定路径。演示模式使用本地规则。',
     alternatives: [], updated_at: new Date().toISOString() }
 }
 
@@ -47,6 +57,5 @@ export function caseSteps(item) {
 
 export function refreshMockPlan(item, trigger) {
   if (item.stage === 'resolved') return
-  if (item.plan) item.plan_history = [...(item.plan_history || []), structuredClone(item.plan)].slice(-10)
   item.plan = rulePlan(item, trigger)
 }

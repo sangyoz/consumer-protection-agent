@@ -2,7 +2,7 @@
   [ValidateSet('start', 'stop', 'status')]
   [string]$Action = 'start',
   [ValidateSet('sqlite', 'mysql')]
-  [string]$Database = 'sqlite',
+  [string]$Database = 'mysql',
   [switch]$OpenBrowser
 )
 
@@ -52,6 +52,7 @@ function Stop-ManagedProcess($Entry) {
 if ($Action -eq 'status') {
   $state = Read-State
   if ($state) {
+    Write-Host ("数据库模式：{0}" -f $state.database)
     foreach ($entry in @($state.frontend, $state.backend)) {
       $running = Test-Port ([int]$entry.port)
       $label = if ($running) { '运行中' } else { '未运行' }
@@ -68,7 +69,7 @@ if ($Action -eq 'stop') {
     Stop-ManagedProcess $state.backend
     Remove-Item -LiteralPath $StatePath -Force -ErrorAction SilentlyContinue
   } else { Write-Host '没有一键启动记录。' }
-  Write-Host 'MySQL 容器和数据库卷保持运行。需要停止数据库时请单独运行：docker compose stop mysql'
+  Write-Host 'MySQL 数据库保持运行，数据不会删除。项目本地数据库位于 .run/mysql/。'
   exit 0
 }
 
@@ -106,7 +107,7 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
   if ($LASTEXITCODE -ne 0) { throw '创建 Python 虚拟环境失败。' }
 }
 
-& $venvPython -c 'import fastapi, uvicorn, sqlalchemy, multipart, dotenv, langgraph, langchain_openai' 2>$null
+& $venvPython -c 'import fastapi, uvicorn, sqlalchemy, multipart, dotenv, langgraph, langchain_openai, pymysql, cryptography' 2>$null
 if ($LASTEXITCODE -ne 0) {
   Write-Host '首次启动或后端依赖有更新：安装后端依赖…' -ForegroundColor Cyan
   & $venvPython -m pip install -r (Join-Path $ProjectRoot 'backend\requirements.txt')
@@ -122,13 +123,10 @@ if (-not (Test-Path -LiteralPath $viteEntry)) {
 }
 
 if ($Database -eq 'mysql') {
-  $dockerCommand = Get-Command docker.exe -ErrorAction SilentlyContinue
-  if (-not $dockerCommand) { throw 'MySQL 模式需要 Docker Desktop；请启动 Docker，或双击 start.bat 使用 SQLite。' }
-  Write-Host '启动 MySQL 8 并等待健康检查…' -ForegroundColor Cyan
-  Push-Location $ProjectRoot
-  try { & $dockerCommand.Source compose up -d --wait mysql } finally { Pop-Location }
-  if ($LASTEXITCODE -ne 0) { throw 'MySQL 启动失败，请确认 Docker Desktop 正在运行。' }
-  $env:DATABASE_URL = 'mysql+pymysql://youli:youli_dev_password@127.0.0.1:3306/youli?charset=utf8mb4'
+  Write-Host '准备 MySQL 并核对案件数据…' -ForegroundColor Cyan
+  & $venvPython (Join-Path $ProjectRoot 'backend\tools\setup_mysql.py')
+  if ($LASTEXITCODE -ne 0) { throw 'MySQL 配置失败，请根据上面的提示检查后重试。' }
+  $env:DATABASE_URL = (((Get-Content -LiteralPath $backendEnv | Where-Object { $_ -match '^DATABASE_URL=' } | Select-Object -First 1) -replace '^DATABASE_URL=', '').Trim()).Trim([char]39, [char]34)
 } else {
   $databaseFile = (Join-Path $ProjectRoot 'backend\youli.db').Replace('\', '/')
   $env:DATABASE_URL = "sqlite:///$databaseFile"
@@ -180,7 +178,7 @@ Write-Host "`n前端已启动：http://127.0.0.1:$WebPort" -ForegroundColor Gree
 Write-Host "后端接口文档：http://127.0.0.1:$ApiPort/docs"
 Write-Host "数据库：$Database；Agent：$agentLabel"
 Write-Host "日志目录：$LogRoot"
-Write-Host '停止前后端：stop.bat；数据库容器和数据卷会保持不变。'
+Write-Host '停止前后端：stop.bat；MySQL 数据库和数据文件会保持不变。'
 if ($OpenBrowser) {
   try { Start-Process "http://127.0.0.1:$WebPort" -ErrorAction Stop } catch {
     Write-Warning "浏览器未能自动打开，请手动访问 http://127.0.0.1:$WebPort"

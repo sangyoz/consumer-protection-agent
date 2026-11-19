@@ -14,7 +14,7 @@ const rows = computed(() => definitions.map(([key, label, required]) => ({
 })))
 async function confirm(row, checked) {
   if (await store.act('updateEvidence', props.item.id, { key: row.key, status: checked ? 'user_confirmed' : 'missing', note: row.note || '' })) {
-    store.notify(checked ? '已记录你掌握这项证据，并重新评估后续步骤' : '已取消确认，并重新评估后续步骤')
+    store.notify(checked ? '已记录你掌握这项证据' : '已取消确认')
   }
 }
 </script>

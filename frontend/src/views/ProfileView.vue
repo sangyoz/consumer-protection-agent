@@ -1,10 +1,24 @@
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '../stores/auth'
 import { useCasesStore } from '../stores/cases'
 
 const store = useCasesStore()
+const auth = useAuth()
+const router = useRouter()
+const loggingOut = ref(false)
+const profileKey = `youli.profile.${auth.user.value?.id || 'mock'}`
+async function logout() {
+  loggingOut.value = true
+  try {
+    await auth.logout()
+    store.items = []; store.current = null; store.error = ''; store.toast = ''
+    await router.replace('/login')
+  } catch { store.notify('退出失败，请重试') } finally { loggingOut.value = false }
+}
 let saved = {}
-try { saved = JSON.parse(localStorage.getItem('youli.profile.v1') || '{}') || {} } catch { /* 使用空资料 */ }
+try { saved = JSON.parse(localStorage.getItem(profileKey) || '{}') || {} } catch { /* 使用空资料 */ }
 
 const form = reactive({ nickname: saved.nickname || '', name: saved.name || '', phone: saved.phone || '', idCard: saved.idCard || '' })
 const errors = reactive({ phone: '', idCard: '' })
@@ -35,7 +49,7 @@ function save() {
     phone: form.phone.trim(),
     idCard: form.idCard.trim().toUpperCase(),
   }
-  try { localStorage.setItem('youli.profile.v1', JSON.stringify(payload)); store.notify('个人资料已保存到当前浏览器') } catch { store.notify('浏览器存储不可用，资料未保存') }
+  try { localStorage.setItem(profileKey, JSON.stringify(payload)); store.notify('个人资料已保存到当前浏览器') } catch { store.notify('浏览器存储不可用，资料未保存') }
 }
 </script>
 
@@ -46,10 +60,11 @@ function save() {
     <form class="panel content-panel profile-form" @submit.prevent="save">
       <div class="profile-intro">
         <span class="avatar large-avatar">{{ form.name ? form.name[0] : '我' }}</span>
-        <div>
-          <h2>个人工作空间</h2>
-          <p class="small muted">资料仅保存在当前浏览器，不会自动对外提交</p>
+        <div class="profile-account-info">
+          <h2>{{ auth.user.value?.username || '个人工作空间' }}</h2>
+          <p class="small muted">编辑你的个人资料</p>
         </div>
+        <button v-if="auth.user.value" type="button" class="btn btn-secondary profile-logout" :disabled="loggingOut" @click="logout">{{ loggingOut ? '正在退出…' : '退出登录' }}</button>
       </div>
 
       <label class="field">昵称<input v-model="form.nickname" maxlength="50" placeholder="如何称呼你" autocomplete="nickname" /></label>
@@ -66,3 +81,14 @@ function save() {
     </form>
   </div>
 </template>
+
+<style scoped>
+.profile-account-info { flex: 1; min-width: 0; }
+.profile-account-info h2 { overflow-wrap: anywhere; }
+.profile-logout { flex-shrink: 0; }
+@media (max-width: 540px) {
+  .profile-intro { flex-wrap: wrap; }
+  .profile-account-info { flex-basis: calc(100% - 75px); }
+  .profile-logout { margin-left: auto; }
+}
+</style>

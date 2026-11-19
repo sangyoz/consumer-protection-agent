@@ -3,6 +3,8 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from './components/AppIcon.vue'
 import { useCasesStore } from './stores/cases'
+import { useAuth } from './stores/auth'
+const auth = useAuth()
 const route = useRoute()
 const store = useCasesStore()
 const menuOpen = ref(false)
@@ -12,7 +14,8 @@ const nav = [{ to: '/', icon: 'grid', text: '案件中心' }, { to: '/follow-up'
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'focused-shell': focused }">
+  <RouterView v-if="route.meta.public" />
+  <div v-else class="app-shell" :class="{ 'focused-shell': focused }">
     <aside v-if="!focused" class="sidebar" :class="{ 'is-open': menuOpen }">
       <RouterLink to="/" class="brand" @click="menuOpen = false"><span class="brand-mark">理</span><span><strong>有理</strong><small>消费维权助手</small></span></RouterLink>
       <div class="nav-label">我的工作空间</div>
@@ -20,7 +23,7 @@ const nav = [{ to: '/', icon: 'grid', text: '案件中心' }, { to: '/follow-up'
         <RouterLink v-for="item in nav" :key="item.to" :to="item.to" :class="{ selected: item.to === '/' ? route.path === '/' || route.path.startsWith('/cases') : route.path === item.to }" @click="menuOpen = false"><AppIcon :name="item.icon" :size="19" />{{ item.text }}<AppIcon class="nav-arrow" name="chevron" :size="14" /></RouterLink>
       </nav>
       <div class="sidebar-note"><AppIcon name="shield" :size="22" /><strong>让每一步，都有依据</strong><p>梳理事实、理性沟通，<br />一起把问题逐步解决。</p></div>
-      <RouterLink to="/profile" class="sidebar-user"><span class="avatar">我</span><span><strong>我的工作空间</strong><small>个人消费维权</small></span><AppIcon name="chevron" :size="15" /></RouterLink>
+      <RouterLink to="/profile" class="sidebar-user"><span class="avatar">我</span><span><strong>{{ auth.user.value?.username || '我的工作空间' }}</strong><small>个人消费维权</small></span><AppIcon name="chevron" :size="15" /></RouterLink>
     </aside>
     <button v-if="menuOpen && !focused" class="sidebar-overlay" aria-label="关闭导航" @click="menuOpen = false"></button>
     <main class="app-main">
