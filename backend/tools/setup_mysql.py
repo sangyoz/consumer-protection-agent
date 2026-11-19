@@ -72,9 +72,11 @@ def prepare_local():
             package.extractall(RUN)
     data = RUN / 'data'
     config = RUN / 'my.ini'
+    shared_config = RUN / 'sharing.json'
+    bind_address = json.loads(shared_config.read_text(encoding='utf-8')).get('bind_address', '127.0.0.1') if shared_config.exists() else '127.0.0.1'
     config.write_text('\n'.join([
         '[mysqld]', f'basedir="{runtime.as_posix()}"', f'datadir="{data.as_posix()}"',
-        'bind-address=127.0.0.1', 'port=3306', 'mysqlx=OFF',
+        f'bind-address={bind_address}', 'port=3306', 'mysqlx=OFF',
         'character-set-server=utf8mb4', 'collation-server=utf8mb4_0900_ai_ci',
         'innodb-buffer-pool-size=128M', f'log-error="{(RUN / "mysql.err.log").as_posix()}"',
         f'pid-file="{(RUN / "mysql.pid").as_posix()}"',
@@ -131,6 +133,8 @@ def main():
     else:
         url = prepare_local()
     from app.services.database_migration import migrate_cases
+    settings = dotenv_values(env_file)
+    skip_import = (os.environ.get('SKIP_SQLITE_IMPORT') or settings.get('SKIP_SQLITE_IMPORT')) == '1'
     engine = create_engine(url, pool_pre_ping=True)
     try:
         RUN.mkdir(parents=True, exist_ok=True)
@@ -138,7 +142,11 @@ def main():
         # Track each destination separately; never replay stale SQLite after MySQL edits.
         identity = str(url._replace(password=None))
         previous = json.loads(marker.read_text(encoding='utf-8')) if marker.exists() else {}
-        if previous.get('destination') != identity:
+        if skip_import:
+            from app.services.schema_migration import upgrade_schema
+            upgrade_schema(engine)
+            print('共享数据库模式：跳过本机 SQLite 导入。', flush=True)
+        elif previous.get('destination') != identity:
             backup = ROOT / '.run' / 'backups' / f'youli-before-mysql-{time.time_ns()}.db'
             result = migrate_cases(BACKEND / 'youli.db', engine, backup)
             marker.write_text(json.dumps({'destination': identity, **result}), encoding='utf-8')
