@@ -28,7 +28,9 @@ async function submit() {
     await router.replace(typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') && !/^\/(login|register)/.test(next) ? next : '/')
   } catch (err) {
     const detail = err.response?.data?.detail
-    error.value = typeof detail === 'string' ? detail : Array.isArray(detail) ? '请检查账号格式和密码长度' : '暂时无法连接，请确认服务已启动'
+    error.value = err.response?.status === 404
+      ? '账号接口不存在，请更新并重启后端，检查前端是否连接了正确的服务'
+      : typeof detail === 'string' ? detail : Array.isArray(detail) ? '请检查账号格式和密码长度' : '暂时无法连接，请确认服务已启动'
   } finally { busy.value = false }
 }
 </script>

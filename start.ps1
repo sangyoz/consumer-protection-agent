@@ -107,7 +107,7 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
   if ($LASTEXITCODE -ne 0) { throw '创建 Python 虚拟环境失败。' }
 }
 
-& $venvPython -c 'import fastapi, uvicorn, sqlalchemy, multipart, dotenv, langgraph, langchain_openai, pymysql, cryptography' 2>$null
+& $venvPython -c 'import importlib.util,sys; sys.exit(not all(map(importlib.util.find_spec,sys.argv[1:])))' fastapi uvicorn sqlalchemy multipart dotenv langgraph langchain_openai pymysql cryptography
 if ($LASTEXITCODE -ne 0) {
   Write-Host '首次启动或后端依赖有更新：安装后端依赖…' -ForegroundColor Cyan
   & $venvPython -m pip install -r (Join-Path $ProjectRoot 'backend\requirements.txt')
@@ -142,7 +142,7 @@ $backendErr = Join-Path $LogRoot 'backend.err.log'
 $frontendOut = Join-Path $LogRoot 'frontend.out.log'
 $frontendErr = Join-Path $LogRoot 'frontend.err.log'
 $backendProcess = Start-Process -FilePath $venvPython -ArgumentList @('-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', "$ApiPort") -WorkingDirectory (Join-Path $ProjectRoot 'backend') -WindowStyle Hidden -RedirectStandardOutput $backendOut -RedirectStandardError $backendErr -PassThru
-$frontendProcess = Start-Process -FilePath $nodeCommand.Source -ArgumentList @($viteEntry, '--host', '127.0.0.1', '--port', "$WebPort", '--strictPort') -WorkingDirectory (Join-Path $ProjectRoot 'frontend') -WindowStyle Hidden -RedirectStandardOutput $frontendOut -RedirectStandardError $frontendErr -PassThru
+$frontendProcess = Start-Process -FilePath $nodeCommand.Source -ArgumentList @(('"' + $viteEntry + '"'), '--host', '127.0.0.1', '--port', "$WebPort", '--strictPort') -WorkingDirectory (Join-Path $ProjectRoot 'frontend') -WindowStyle Hidden -RedirectStandardOutput $frontendOut -RedirectStandardError $frontendErr -PassThru
 
 $state = [ordered]@{
   database = $Database
@@ -155,13 +155,26 @@ $ready = $false
 for ($attempt = 0; $attempt -lt 45; $attempt++) {
   try {
     $health = Invoke-RestMethod -Uri "http://127.0.0.1:$ApiPort/api/health" -TimeoutSec 2
-    if ($health.status -eq 'ok') { $ready = $true; break }
+    if ($health.status -eq 'ok') {
+      $apiSchema = Invoke-RestMethod -Uri "http://127.0.0.1:$ApiPort/openapi.json" -TimeoutSec 3
+      if ($apiSchema.paths.PSObject.Properties.Name -contains '/api/auth/register') { $ready = $true; break }
+    }
   } catch { Start-Sleep -Milliseconds 1000 }
 }
 $frontendReady = $false
 try {
   $frontendResponse = Invoke-WebRequest -Uri "http://127.0.0.1:$WebPort" -UseBasicParsing -TimeoutSec 3
   $frontendReady = $frontendResponse.StatusCode -eq 200
+  # An empty POST must reach the current backend and fail input validation (422).
+  # HTML fallback/404/connection errors mean the UI is talking to the wrong API.
+  if ($frontendReady) {
+    $frontendReady = $false
+    try {
+      Invoke-WebRequest -Uri "http://127.0.0.1:$WebPort/api/auth/register" -Method Post -ContentType 'application/json' -Body '{}' -UseBasicParsing -TimeoutSec 5 | Out-Null
+    } catch {
+      if ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 422) { $frontendReady = $true }
+    }
+  }
 } catch { }
 if (-not $ready -or -not $frontendReady) {
   $apiLog = if (Test-Path $backendErr) { Get-Content $backendErr -Tail 20 } else { @() }
